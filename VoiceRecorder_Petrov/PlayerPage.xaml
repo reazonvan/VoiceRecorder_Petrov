@@ -5,12 +5,14 @@
              Title="Воспроизведение"
              BackgroundColor="#F5F5F5">
 
-    <Grid RowDefinitions="*,Auto,Auto,Auto,*" Padding="20">
+    <Grid RowDefinitions="*,Auto,Auto,*" Padding="20">
 
         <!-- Название записи -->
         <VerticalStackLayout Grid.Row="1" 
-                             Spacing="10"
-                             HorizontalOptions="Center">
+                             Spacing="15"
+                             HorizontalOptions="Center"
+                             VerticalOptions="Center">
+            
             <Label x:Name="TitleLabel" 
                    Text="Запись" 
                    FontSize="24"
@@ -23,102 +25,65 @@
                    FontSize="14"
                    HorizontalOptions="Center"
                    TextColor="#666666"/>
-        </VerticalStackLayout>
-
-        <!-- Прогресс бар -->
-        <VerticalStackLayout Grid.Row="2" 
-                             Spacing="10"
-                             Margin="0,30,0,20">
             
-            <!-- Слайдер для перемотки -->
-            <Slider x:Name="PositionSlider"
-                    Minimum="0"
-                    Maximum="100"
-                    Value="0"
-                    MinimumTrackColor="#007AFF"
-                    MaximumTrackColor="#DDDDDD"
-                    ThumbColor="#007AFF"
-                    ValueChanged="OnPositionChanged"/>
+            <Label x:Name="DurationLabel" 
+                   Text="00:00" 
+                   FontSize="48"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="#007AFF"
+                   Margin="0,20,0,0"/>
             
-            <!-- Время -->
-            <Grid ColumnDefinitions="*,*">
-                <Label x:Name="CurrentTimeLabel" 
-                       Text="00:00" 
-                       FontSize="14"
-                       HorizontalOptions="Start"
-                       TextColor="#666666"/>
-                
-                <Label x:Name="TotalTimeLabel" 
-                       Text="00:00" 
-                       FontSize="14"
-                       Grid.Column="1"
-                       HorizontalOptions="End"
-                       TextColor="#666666"/>
-            </Grid>
+            <Label x:Name="StatusLabel" 
+                   Text="Готово к воспроизведению" 
+                   FontSize="16"
+                   HorizontalOptions="Center"
+                   TextColor="#999999"/>
         </VerticalStackLayout>
 
         <!-- Кнопки управления -->
-        <HorizontalStackLayout Grid.Row="3" 
+        <HorizontalStackLayout Grid.Row="2" 
                                Spacing="20"
                                HorizontalOptions="Center"
-                               Margin="0,20">
-            
-            <!-- Назад 10 сек -->
-            <Button x:Name="BackwardButton"
-                    Text="−10"
-                    FontSize="16"
-                    WidthRequest="60"
-                    HeightRequest="60"
-                    BackgroundColor="#E0E0E0"
-                    TextColor="#333333"
-                    CornerRadius="30"
-                    Clicked="OnBackwardClicked"/>
+                               Margin="0,40">
             
             <!-- Play/Pause -->
-            <Border WidthRequest="80"
-                    HeightRequest="80"
+            <Border WidthRequest="100"
+                    HeightRequest="100"
                     BackgroundColor="#007AFF"
                     StrokeThickness="0">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="40"/>
+                    <RoundRectangle CornerRadius="50"/>
                 </Border.StrokeShape>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnPlayPauseTapped"/>
                 </Border.GestureRecognizers>
                 
-                <!-- Иконка Play -->
-                <Path x:Name="PlayIcon"
-                      Data="M8,5.14V19.14L19,12.14L8,5.14Z"
-                      Fill="White"
-                      Aspect="Uniform"
-                      HeightRequest="30"
-                      WidthRequest="30"
-                      IsVisible="True"/>
-                
-                <!-- Иконка Pause -->
-                <Path x:Name="PauseIcon"
-                      Data="M6,4H10V20H6V4M14,4H18V20H14V4Z"
-                      Fill="White"
-                      Aspect="Uniform"
-                      HeightRequest="30"
-                      WidthRequest="30"
-                      IsVisible="False"/>
+                <Grid>
+                    <!-- Иконка Play -->
+                    <Label x:Name="PlayIcon"
+                           Text="▶"
+                           FontSize="40"
+                           TextColor="White"
+                           IsVisible="True"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           Margin="5,0,0,0"/>
+                    
+                    <!-- Иконка Pause -->
+                    <Label x:Name="PauseIcon"
+                           Text="❚❚"
+                           FontSize="32"
+                           TextColor="White"
+                           IsVisible="False"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"/>
+                </Grid>
             </Border>
-            
-            <!-- Вперед 10 сек -->
-            <Button x:Name="ForwardButton"
-                    Text="+10"
-                    FontSize="16"
-                    WidthRequest="60"
-                    HeightRequest="60"
-                    BackgroundColor="#E0E0E0"
-                    TextColor="#333333"
-                    CornerRadius="30"
-                    Clicked="OnForwardClicked"/>
         </HorizontalStackLayout>
 
         <!-- Кнопка закрыть -->
-        <Button Grid.Row="4"
+        <Button Grid.Row="3"
                 Text="Закрыть"
                 FontSize="16"
                 BackgroundColor="#FF3B30"
@@ -126,10 +91,9 @@
                 CornerRadius="10"
                 HeightRequest="50"
                 VerticalOptions="End"
-                Margin="0,40,0,0"
+                Margin="0,0,0,20"
                 Clicked="OnCloseClicked"/>
 
     </Grid>
 
 </ContentPage>
-
