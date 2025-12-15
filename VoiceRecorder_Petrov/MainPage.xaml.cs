@@ -81,9 +81,8 @@ namespace VoiceRecorder_Petrov
                     StopRecordingAfterTimeout = false    // Не останавливать по таймауту
                 };
 
-                // Шаг 3: Начинаем запись (ДВОЙНОЙ await - особенность плагина!)
-                var recordTask = _recorder.StartRecording();
-                var filePath = await recordTask;
+                // Шаг 3: Начинаем запись
+                await _recorder.StartRecording();
 
                 // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
