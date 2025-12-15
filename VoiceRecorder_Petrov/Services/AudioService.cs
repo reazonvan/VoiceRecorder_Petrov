@@ -63,7 +63,12 @@ namespace VoiceRecorder_Petrov.Services
                 }
                 
                 // Шаг 3: Создаем имя файла с датой
-                var fileName = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}.wav";
+                // Берем расширение исходного файла (.wav/.m4a/и т.д.), чтобы не ломать воспроизведение
+                var ext = Path.GetExtension(tempFilePath);
+                if (string.IsNullOrWhiteSpace(ext))
+                    ext = ".wav";
+
+                var fileName = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
                 var newFilePath = Path.Combine(_recordingsFolder, fileName);
 
                 // Шаг 4: Копируем временный файл в постоянное место

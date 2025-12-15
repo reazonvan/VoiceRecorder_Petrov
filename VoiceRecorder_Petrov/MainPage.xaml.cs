@@ -3,6 +3,10 @@ using VoiceRecorder_Petrov.Models;
 using VoiceRecorder_Petrov.Services;
 using System.Threading.Tasks;
 
+#if ANDROID
+using Android.Media;
+#endif
+
 namespace VoiceRecorder_Petrov
 {
     // ========================================
@@ -21,6 +25,11 @@ namespace VoiceRecorder_Petrov
         private string? _recordingFilePath = null;           // Путь к файлу (сохраняем при старте)
         private Task<string>? _recordingTask = null;         // Задача, которая вернет путь (ждем после Stop)
         private bool _isBusy = false;                        // Флаг: идет старт/стоп (защита от двойных нажатий)
+
+#if ANDROID
+        private MediaRecorder? _androidRecorder;             // Android рекордер (стабильнее, чем Plugin.AudioRecorder)
+        private string? _androidTempFilePath;                // Куда пишем временный файл (потом копируем в Recordings)
+#endif
 
         // --- КОНСТРУКТОР ---
         
@@ -87,16 +96,22 @@ namespace VoiceRecorder_Petrov
                     return;
                 }
 
-                // Шаг 2: Создаем объект для записи
+                // Шаг 2: Старт записи
+                // На Android используем MediaRecorder (намного стабильнее, чем Plugin.AudioRecorder).
+                // На остальных платформах оставляем Plugin.AudioRecorder как запасной вариант.
+#if ANDROID
+                if (!StartRecordingAndroid())
+                {
+                    await DisplayAlertAsync("Ошибка", "Не удалось начать запись (MediaRecorder)", "OK");
+                    return;
+                }
+#else
                 _recorder = new AudioRecorderService
                 {
-                    StopRecordingOnSilence = false,      // Не останавливать при тишине
-                    StopRecordingAfterTimeout = false    // Не останавливать по таймауту
+                    StopRecordingOnSilence = false,
+                    StopRecordingAfterTimeout = false
                 };
 
-                // Шаг 3: ВАЖНО
-                // Ждем только "старт" (первый await) — так мы точно знаем, что запись реально началась.
-                // Путь (string) придет позже, после StopRecording(), через _recordingTask.
                 _recordingFilePath = null;
                 _recordingTask = null;
                 try
@@ -105,11 +120,11 @@ namespace VoiceRecorder_Petrov
                 }
                 catch (Exception ex)
                 {
-                    // Если не смогли стартовать запись — НЕ переводим UI в режим "идет запись"
                     _recorder = null;
                     await DisplayAlertAsync("Ошибка", $"Не удалось начать запись: {ex.Message}", "OK");
                     return;
                 }
+#endif
 
                 // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
@@ -149,61 +164,66 @@ namespace VoiceRecorder_Petrov
                 _timer?.Dispose();
                 _timer = null;
 
+                // Шаг 2: Останавливаем запись и получаем путь к временному файлу
+                string? tempFilePath = null;
+
+#if ANDROID
+                tempFilePath = StopRecordingAndroid();
+#else
                 if (_recorder != null)
                 {
-                    // Шаг 2: Останавливаем запись
                     await _recorder.StopRecording();
-                    
-                    // Шаг 3: Даем БОЛЬШЕ времени на сохранение (1 секунда)
                     await Task.Delay(1000);
-                    
-                    // Шаг 4: Получаем путь (самый надежный способ — результат _recordingTask)
-                    string? tempFilePath = null;
+
                     if (_recordingTask != null)
                     {
                         try { tempFilePath = await _recordingTask; } catch { }
                     }
-                    
-                    // Резерв 1: сохраненный путь (если был)
+
                     if (string.IsNullOrEmpty(tempFilePath))
                         tempFilePath = _recordingFilePath;
 
-                    // Резерв 2: GetAudioFilePath()
                     if (string.IsNullOrEmpty(tempFilePath))
                         tempFilePath = _recorder.GetAudioFilePath();
 
-                    // Даем файлу появиться (8 раз по 250 мс = до 2 секунд)
-                    for (int i = 0; i < 8 && !string.IsNullOrEmpty(tempFilePath) && !File.Exists(tempFilePath); i++)
-                        await Task.Delay(250);
-                    
-                    // Шаг 5: Проверяем файл
-                    if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
-                    {
-                        // Файл найден - сохраняем!
-                        await _audioService.SaveRecording(tempFilePath, _seconds);
-                        await DisplayAlertAsync("Успех", "Запись сохранена!", "OK");
-                        LoadRecordings();
-                    }
-                    else
-                    {
-                        // Показываем отладочную информацию
-                        var taskInfo = _recordingTask == null
-                            ? "(нет задачи)"
-                            : (_recordingTask.IsCompleted ? (_recordingTask.Result ?? "null") : "(не выполнена)");
-
-                        await DisplayAlertAsync("Отладка", 
-                            $"recordingFilePath: {_recordingFilePath ?? "null"}\n" +
-                            $"GetAudioFilePath: {_recorder.GetAudioFilePath() ?? "null"}\n" +
-                            $"Task result: {taskInfo}\n" +
-                            $"Секунд: {_seconds}", 
-                            "OK");
-                    }
-                    
-                    // Шаг 6: освобождаем рекордер (иначе следующий старт иногда ломается)
                     _recordingFilePath = null;
                     _recordingTask = null;
                     try { (_recorder as IDisposable)?.Dispose(); } catch { }
                     _recorder = null;
+                }
+#endif
+
+                // Даем файлу появиться (до 2 секунд)
+                for (int i = 0; i < 8 && !string.IsNullOrEmpty(tempFilePath) && !File.Exists(tempFilePath); i++)
+                    await Task.Delay(250);
+
+                // Шаг 3: Сохраняем
+                if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
+                {
+                    await _audioService.SaveRecording(tempFilePath, _seconds);
+                    await DisplayAlertAsync("Успех", "Запись сохранена!", "OK");
+                    LoadRecordings();
+                }
+                else
+                {
+#if ANDROID
+                    await DisplayAlertAsync("Отладка",
+                        $"Android tempFilePath: {tempFilePath ?? "null"}\n" +
+                        $"Exists: {(tempFilePath != null && File.Exists(tempFilePath))}\n" +
+                        $"Секунд: {_seconds}",
+                        "OK");
+#else
+                    var taskInfo = _recordingTask == null
+                        ? "(нет задачи)"
+                        : (_recordingTask.IsCompleted ? (_recordingTask.Result ?? "null") : "(не выполнена)");
+
+                    await DisplayAlertAsync("Отладка",
+                        $"recordingFilePath: {_recordingFilePath ?? "null"}\n" +
+                        $"GetAudioFilePath: {_recorder?.GetAudioFilePath() ?? "null"}\n" +
+                        $"Task result: {taskInfo}\n" +
+                        $"Секунд: {_seconds}",
+                        "OK");
+#endif
                 }
 
                 // Шаг 7: Сбрасываем состояние
@@ -224,6 +244,72 @@ namespace VoiceRecorder_Petrov
                 StatusLabel.Text = "Готово к записи";
             }
         }
+
+#if ANDROID
+        // ========================================
+        // ANDROID: СТАБИЛЬНАЯ ЗАПИСЬ ЧЕРЕЗ MediaRecorder
+        // (Plugin.AudioRecorder у тебя возвращал null и "через раз" ломался)
+        // ========================================
+        private bool StartRecordingAndroid()
+        {
+            try
+            {
+                // На всякий случай чистим старое
+                try { _androidRecorder?.Reset(); } catch { }
+                try { _androidRecorder?.Release(); } catch { }
+                _androidRecorder = null;
+
+                // Создаем путь, куда ПРЯМО сейчас будем писать файл
+                var fileName = $"temp_recording_{DateTime.Now:yyyyMMdd_HHmmss}.m4a";
+                _androidTempFilePath = Path.Combine(FileSystem.CacheDirectory, fileName);
+
+                // Если вдруг такой файл уже есть - удаляем
+                if (File.Exists(_androidTempFilePath))
+                    File.Delete(_androidTempFilePath);
+
+                _androidRecorder = new MediaRecorder();
+                _androidRecorder.SetAudioSource(AudioSource.Mic);
+                _androidRecorder.SetOutputFormat(OutputFormat.Mpeg4);
+                _androidRecorder.SetAudioEncoder(AudioEncoder.Aac);
+                _androidRecorder.SetAudioEncodingBitRate(128000);
+                _androidRecorder.SetAudioSamplingRate(44100);
+                _androidRecorder.SetOutputFile(_androidTempFilePath);
+
+                _androidRecorder.Prepare();
+                _androidRecorder.Start();
+                return true;
+            }
+            catch
+            {
+                // Если старт не удался - чистим
+                try { _androidRecorder?.Reset(); } catch { }
+                try { _androidRecorder?.Release(); } catch { }
+                _androidRecorder = null;
+                _androidTempFilePath = null;
+                return false;
+            }
+        }
+
+        private string? StopRecordingAndroid()
+        {
+            try
+            {
+                if (_androidRecorder == null)
+                    return null;
+
+                try { _androidRecorder.Stop(); } catch { }
+                try { _androidRecorder.Reset(); } catch { }
+                try { _androidRecorder.Release(); } catch { }
+                _androidRecorder = null;
+
+                return _androidTempFilePath;
+            }
+            finally
+            {
+                // оставляем _androidTempFilePath до SaveRecording
+            }
+        }
+#endif
 
         // --- МЕТОДЫ ВОСПРОИЗВЕДЕНИЯ ---
         
