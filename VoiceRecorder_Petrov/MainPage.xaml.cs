@@ -4,36 +4,33 @@ using VoiceRecorder_Petrov.Services;
 
 namespace VoiceRecorder_Petrov
 {
-    // Главная и единственная страница диктофона
+    // ========================================
+    // ГЛАВНАЯ СТРАНИЦА ПРИЛОЖЕНИЯ
+    // Отвечает за запись голоса и отображение списка записей
+    // ========================================
     public partial class MainPage : ContentPage
     {
-        // Сервис для работы с записями
-        private readonly AudioService _audioService;
+        // --- ПОЛЯ КЛАССА ---
         
-        // Recorder для записи звука
-        private AudioRecorderService? _recorder;
-        
-        // Таймер для отображения времени записи
-        private System.Threading.Timer? _timer;
-        
-        // Счетчик секунд
-        private int _seconds = 0;
-        
-        // Флаг - идет ли запись сейчас
-        private bool _isRecording = false;
+        private readonly AudioService _audioService;        // Сервис для работы с файлами и JSON
+        private AudioRecorderService? _recorder;             // Объект для записи звука с микрофона
+        private System.Threading.Timer? _timer;              // Таймер для отсчета времени записи
+        private int _seconds = 0;                            // Счетчик секунд записи
+        private bool _isRecording = false;                   // Флаг: идет запись или нет
 
+        // --- КОНСТРУКТОР ---
+        
         public MainPage()
         {
             InitializeComponent();
             
-            // Создаем сервис
-            _audioService = new AudioService();
-            
-            // Загружаем список записей
-            LoadRecordings();
+            _audioService = new AudioService();  // Создаем сервис
+            LoadRecordings();                    // Загружаем список записей
         }
 
-        // Загружаем все записи из файла
+        // --- МЕТОДЫ РАБОТЫ СО СПИСКОМ ---
+        
+        // Загружаем все записи из JSON файла и показываем в списке
         private async void LoadRecordings()
         {
             try
@@ -47,27 +44,29 @@ namespace VoiceRecorder_Petrov
             }
         }
 
-        // Нажатие на кнопку записи
+        // --- МЕТОДЫ ЗАПИСИ ---
+        
+        // Обработчик нажатия на кнопку записи
         private async void OnRecordButtonClicked(object sender, EventArgs e)
         {
             if (_isRecording)
             {
-                // Останавливаем запись и сохраняем
+                // Если запись идет - останавливаем и сохраняем
                 await StopRecording();
             }
             else
             {
-                // Начинаем запись
+                // Если не идет - начинаем новую запись
                 await StartRecording();
             }
         }
 
-        // Начинаем запись
+        // Начинаем запись с микрофона
         private async Task StartRecording()
         {
             try
             {
-                // Запрашиваем разрешение на микрофон
+                // Шаг 1: Запрашиваем разрешение на микрофон
                 var status = await Permissions.RequestAsync<Permissions.Microphone>();
                 if (status != PermissionStatus.Granted)
                 {
@@ -75,29 +74,32 @@ namespace VoiceRecorder_Petrov
                     return;
                 }
 
-                // Создаем recorder
+                // Шаг 2: Создаем объект для записи
                 _recorder = new AudioRecorderService
                 {
-                    StopRecordingOnSilence = false,
-                    StopRecordingAfterTimeout = false
+                    StopRecordingOnSilence = false,      // Не останавливать при тишине
+                    StopRecordingAfterTimeout = false    // Не останавливать по таймауту
                 };
 
-                // Начинаем запись (двойной await обязателен!)
-                string filePath = await (await _recorder.StartRecording());
+                // Шаг 3: Начинаем запись (ДВОЙНОЙ await - особенность плагина!)
+                var recordTask = _recorder.StartRecording();
+                var filePath = await recordTask;
 
-                // Меняем состояние
+                // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
                 _seconds = 0;
                 
-                // Обновляем UI
+                // Шаг 5: Обновляем кнопку
                 RecordButton.Text = "Остановить запись";
-                RecordButton.BackgroundColor = Color.FromArgb("#FF3B30");
+                RecordButton.BackgroundColor = Color.FromArgb("#FF3B30");  // Красная
                 StatusLabel.Text = "Идет запись...";
                 
-                // Запускаем таймер (обновляется каждую секунду)
+                // Шаг 6: Запускаем таймер (каждую секунду обновляет экран)
                 _timer = new System.Threading.Timer(_ =>
                 {
-                    _seconds++;
+                    _seconds++;  // Увеличиваем счетчик
+                    
+                    // Обновляем UI (должно быть в главном потоке)
                     MainThread.BeginInvokeOnMainThread(() =>
                     {
                         var minutes = _seconds / 60;
@@ -112,36 +114,34 @@ namespace VoiceRecorder_Petrov
             }
         }
 
-        // Останавливаем запись и сохраняем
+        // Останавливаем запись и сохраняем файл
         private async Task StopRecording()
         {
             try
             {
-                // Останавливаем таймер
+                // Шаг 1: Останавливаем таймер
                 _timer?.Dispose();
                 _timer = null;
 
                 if (_recorder != null)
                 {
-                    // Останавливаем запись
+                    // Шаг 2: Останавливаем запись
                     await _recorder.StopRecording();
                     
-                    // Небольшая задержка для создания файла
+                    // Шаг 3: Даем время на сохранение файла (300ms)
                     await Task.Delay(300);
                     
-                    // Получаем путь к файлу
+                    // Шаг 4: Получаем путь к временному файлу
                     var tempFilePath = _recorder.GetAudioFilePath();
                     
+                    // Шаг 5: Проверяем что файл создан
                     if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
                     {
-                        // Сохраняем запись через сервис
+                        // Шаг 6: Сохраняем через сервис (копирует файл + добавляет в JSON)
                         await _audioService.SaveRecording(tempFilePath, _seconds);
                         
-                        // Показываем сообщение
                         await DisplayAlertAsync("Успех", "Запись сохранена!", "OK");
-                        
-                        // Обновляем список
-                        LoadRecordings();
+                        LoadRecordings();  // Обновляем список
                     }
                     else
                     {
@@ -149,10 +149,10 @@ namespace VoiceRecorder_Petrov
                     }
                 }
 
-                // Меняем состояние обратно
+                // Шаг 7: Сбрасываем состояние
                 _isRecording = false;
                 RecordButton.Text = "Начать запись";
-                RecordButton.BackgroundColor = Color.FromArgb("#007AFF");
+                RecordButton.BackgroundColor = Color.FromArgb("#007AFF");  // Синяя
                 StatusLabel.Text = "Готово к записи";
                 TimerLabel.Text = "00:00";
             }
@@ -160,7 +160,7 @@ namespace VoiceRecorder_Petrov
             {
                 await DisplayAlertAsync("Ошибка", $"Не удалось остановить запись: {ex.Message}", "OK");
                 
-                // Сбрасываем состояние
+                // Сбрасываем состояние даже при ошибке
                 _isRecording = false;
                 RecordButton.Text = "Начать запись";
                 RecordButton.BackgroundColor = Color.FromArgb("#007AFF");
@@ -168,12 +168,14 @@ namespace VoiceRecorder_Petrov
             }
         }
 
-        // Нажатие на кнопку воспроизведения
+        // --- МЕТОДЫ ВОСПРОИЗВЕДЕНИЯ ---
+        
+        // Обработчик нажатия на кнопку Play (открывает плеер)
         private async void OnPlayButtonClicked(object sender, EventArgs e)
         {
             try
             {
-                // Получаем параметр из TapGestureRecognizer
+                // Получаем запись из параметра кнопки
                 var tappedEventArgs = e as TappedEventArgs;
                 var recording = tappedEventArgs?.Parameter as AudioRecording;
                 
@@ -193,12 +195,14 @@ namespace VoiceRecorder_Petrov
             }
         }
 
-        // Нажатие на кнопку удаления
+        // --- МЕТОДЫ УДАЛЕНИЯ ---
+        
+        // Обработчик нажатия на кнопку Delete (удаляет запись)
         private async void OnDeleteButtonClicked(object sender, EventArgs e)
         {
             try
             {
-                // Получаем параметр из TapGestureRecognizer
+                // Получаем запись из параметра кнопки
                 var tappedEventArgs = e as TappedEventArgs;
                 var recording = tappedEventArgs?.Parameter as AudioRecording;
                 
@@ -212,7 +216,7 @@ namespace VoiceRecorder_Petrov
                     
                     if (confirm)
                     {
-                        // Удаляем через сервис
+                        // Удаляем файл + запись из JSON
                         await _audioService.DeleteRecording(recording);
                         
                         // Обновляем список
