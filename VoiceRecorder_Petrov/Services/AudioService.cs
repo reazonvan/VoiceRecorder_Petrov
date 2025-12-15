@@ -34,13 +34,13 @@ namespace VoiceRecorder_Petrov.Services
 
         public AudioService()
         {
-            // AppDataDirectory — “песочница” приложения: можно хранить записи без внешних разрешений.
+            // Путь к папке с записями (в данных приложения)
             _recordingsFolder = Path.Combine(FileSystem.AppDataDirectory, "Recordings");
             
-            // В JSON храним “каталог” записей (название/дата/длительность/путь к файлу).
+            // Путь к JSON файлу с метаданными
             _dataFile = Path.Combine(FileSystem.AppDataDirectory, "recordings.json");
             
-            // Папка создаётся при первом запуске.
+            // Создаем папку если её нет
             if (!Directory.Exists(_recordingsFolder))
             {
                 Directory.CreateDirectory(_recordingsFolder);
@@ -49,44 +49,47 @@ namespace VoiceRecorder_Petrov.Services
 
         // --- МЕТОДЫ СОХРАНЕНИЯ ---
         
-        // Сохраняем новую запись (копируем файл + добавляем в JSON)
-        // Максимум 100 записей
+        // Сохраняем новую запись: копируем временный файл в постоянную папку и добавляем метаданные в JSON.
+        // Ограничение: максимум 100 записей (чтобы не забить всё место).
         public async Task SaveRecording(string tempFilePath, int durationSeconds)
         {
             try
             {
-                // Общая идея: файл кладём в папку приложения, а метаданные обновляем в JSON.
+                // Загружаем текущий список из JSON
                 var recordings = await LoadRecordingsFromFile();
                 
-                // Ограничение по количеству, чтобы папка со временем не разрасталась.
+                // Проверяем лимит: если записей >= 100, удаляем самую старую
                 if (recordings.Count >= 100)
                 {
+                    // Сортируем по дате и берём первую (самую старую)
                     var oldestRecording = recordings.OrderBy(r => r.CreatedDate).First();
                     
-                    // Удаляем и файл, и запись из списка.
+                    // Удаляем физический файл со старой записью
                     if (File.Exists(oldestRecording.FilePath))
                     {
                         File.Delete(oldestRecording.FilePath);
                     }
                     
+                    // Убираем из списка
                     recordings.Remove(oldestRecording);
                 }
                 
-                // Берём расширение исходного файла (.wav/.m4a/...), чтобы не ломать воспроизведение.
+                // Формируем имя файла с текущей датой (чтобы не было конфликтов)
+                // Берём расширение из временного файла (.wav/.m4a/...), чтобы воспроизведение не ломалось
                 var ext = Path.GetExtension(tempFilePath);
                 if (string.IsNullOrWhiteSpace(ext))
                     ext = ".wav";
 
-                // Делаем “читаемое” имя с датой/временем.
                 var fileName = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
                 var newFilePath = Path.Combine(_recordingsFolder, fileName);
 
-                // Переносим временный файл в постоянное место.
+                // Копируем временный файл в папку Recordings
                 File.Copy(tempFilePath, newFilePath, true);
                 
+                // Узнаём размер файла для отображения пользователю
                 var fileInfo = new FileInfo(newFilePath);
 
-                // Метаданные нужны для списка на главной странице.
+                // Создаём объект с информацией о записи
                 var recording = new AudioRecording
                 {
                     Title = $"Запись от {DateTime.Now:dd.MM.yyyy HH:mm}",
@@ -96,9 +99,10 @@ namespace VoiceRecorder_Petrov.Services
                     FileSizeBytes = fileInfo.Length
                 };
                 
+                // Добавляем новую запись в список
                 recordings.Add(recording);
                 
-                // Записываем обновлённый каталог обратно в JSON.
+                // Сохраняем обновлённый список обратно в JSON
                 await SaveRecordingsToFile(recordings);
             }
             catch (Exception ex)
@@ -109,21 +113,22 @@ namespace VoiceRecorder_Petrov.Services
 
         // --- МЕТОДЫ ЗАГРУЗКИ ---
         
-        // Получаем все записи из JSON
+        // Получаем все записи из JSON для отображения в списке на главной странице
         public async Task<List<AudioRecording>> GetAllRecordings()
         {
             try
             {
-                // Загружаем из JSON файла
+                // Читаем список из JSON файла
                 var recordings = await LoadRecordingsFromFile();
                 
-                // Фильтруем - оставляем только те, у которых файлы существуют
+                // Фильтруем: иногда файл может быть удалён вручную через проводник,
+                // поэтому оставляем только те записи, для которых файлы реально существуют
                 var validRecordings = recordings
                     .Where(r => File.Exists(r.FilePath))
-                    .OrderByDescending(r => r.CreatedDate)  // Новые сверху
+                    .OrderByDescending(r => r.CreatedDate)  // Сортировка: новые записи сверху
                     .ToList();
                 
-                // Если были записи без файлов - обновляем JSON
+                // Если нашлись "мёртвые" ссылки - обновляем JSON, чтобы там были только валидные записи
                 if (validRecordings.Count != recordings.Count)
                 {
                     await SaveRecordingsToFile(validRecordings);
@@ -133,31 +138,33 @@ namespace VoiceRecorder_Petrov.Services
             }
             catch (Exception)
             {
+                // Если что-то пошло не так - возвращаем пустой список (лучше пустой список, чем краш)
                 return new List<AudioRecording>();
             }
         }
 
         // --- МЕТОДЫ ВОСПРОИЗВЕДЕНИЯ ---
         
-        // Воспроизводим запись через AudioPlayer
+        // Воспроизводим выбранную запись (вызывается со страницы PlayerPage)
         public void PlayRecording(string filePath)
         {
             try
             {
                 if (File.Exists(filePath))
                 {
-                    // Не даём двум записям играть одновременно.
+                    // Сначала останавливаем предыдущий плеер (если был), чтобы не было наложения
                     StopPlayback();
                     
 #if ANDROID
+                    // На Android используем нативный MediaPlayer - он надёжнее плагина
                     lock (_playerLock)
                     {
                         MediaPlayer player = new MediaPlayer();
                         _androidPlayer = player;
                         player.SetDataSource(filePath);
                         
-                        // Без Stream.* (чтобы не было конфликта с System.IO.Stream)
-                        // AudioAttributes доступны с API 21+
+                        // Настраиваем атрибуты аудио (только для API 21+, иначе будет краш)
+                        // Указываем, что это медиа-контент (не рингтон/уведомление)
                         if (OperatingSystem.IsAndroidVersionAtLeast(21))
                         {
                             var builder = new AudioAttributes.Builder();
@@ -168,18 +175,17 @@ namespace VoiceRecorder_Petrov.Services
                                 player.SetAudioAttributes(attributes);
                         }
 
-                        // Когда дошли до конца - чистим ресурсы
+                        // Подписываемся на событие окончания воспроизведения
                         player.Completion += (_, __) => StopPlayback();
 
+                        // Готовим плеер и запускаем
                         player.Prepare();
                         player.Start();
                         IsCurrentlyPlaying = true;
                     }
 #else
-                    // Для не-Android используем плеер из плагина.
+                    // На остальных платформах используем плагин Plugin.AudioRecorder
                     _currentPlayer = new AudioPlayer();
-
-                    // Запускаем воспроизведение
                     _currentPlayer.Play(filePath);
                     IsCurrentlyPlaying = true;
 #endif
@@ -195,7 +201,7 @@ namespace VoiceRecorder_Petrov.Services
             }
         }
 
-        // Останавливаем воспроизведение и освобождаем ресурсы.
+        // Останавливаем воспроизведение (вызывается при закрытии плеера или начале нового воспроизведения)
         public void StopPlayback()
         {
             try
@@ -207,7 +213,8 @@ namespace VoiceRecorder_Petrov.Services
                     {
                         if (_androidPlayer != null)
                         {
-                            // На Android важно вызвать Release(), иначе плеер может “держать” аудиофокус.
+                            // Аккуратно останавливаем MediaPlayer: Stop → Reset → Release
+                            // Каждый вызов в try/catch, т.к. при некоторых состояниях могут быть исключения
                             try { _androidPlayer.Stop(); } catch { }
                             try { _androidPlayer.Reset(); } catch { }
                             try { _androidPlayer.Release(); } catch { }
@@ -220,12 +227,14 @@ namespace VoiceRecorder_Petrov.Services
                     }
                 }
 #else
+                // На не-Android платформах просто обнуляем плеер
                 IsCurrentlyPlaying = false;
                 _currentPlayer = null;
 #endif
             }
             catch
             {
+                // Если что-то пошло не так - всё равно сбрасываем флаг
 #if !ANDROID
                 _currentPlayer = null;
 #endif
@@ -235,24 +244,24 @@ namespace VoiceRecorder_Petrov.Services
 
         // --- МЕТОДЫ УДАЛЕНИЯ ---
         
-        // Удаляем запись (файл + из JSON)
+        // Удаляем запись: и физический файл, и метаданные из JSON
         public async Task DeleteRecording(AudioRecording recording)
         {
             try
             {
-                // Удаляем файл с диска
+                // Сначала удаляем сам аудиофайл с диска
                 if (File.Exists(recording.FilePath))
                 {
                     File.Delete(recording.FilePath);
                 }
 
-                // Загружаем список из JSON
+                // Теперь убираем информацию о записи из JSON
                 var recordings = await LoadRecordingsFromFile();
                 
-                // Удаляем запись из списка
+                // Ищем по ID и удаляем (ID генерируется при создании записи)
                 recordings.RemoveAll(r => r.Id == recording.Id);
                 
-                // Сохраняем обновленный список в JSON
+                // Сохраняем обновлённый список
                 await SaveRecordingsToFile(recordings);
             }
             catch (Exception ex)
@@ -263,43 +272,45 @@ namespace VoiceRecorder_Petrov.Services
 
         // --- ПРИВАТНЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С JSON ---
         
-        // Загружаем список записей из JSON файла
+        // Загружаем список записей из JSON (внутренний метод, вызывается другими методами сервиса)
         private async Task<List<AudioRecording>> LoadRecordingsFromFile()
         {
             try
             {
-                // Если файл не существует - возвращаем пустой список
+                // Если это первый запуск приложения - JSON файла ещё нет
                 if (!File.Exists(_dataFile))
                 {
                     return new List<AudioRecording>();
                 }
 
-                // Читаем JSON из файла
+                // Читаем содержимое файла
                 var json = await File.ReadAllTextAsync(_dataFile);
                 
-                // Преобразуем JSON в список объектов
+                // Десериализуем: превращаем JSON-строку в список объектов AudioRecording
                 var recordings = JsonSerializer.Deserialize<List<AudioRecording>>(json);
                 
                 return recordings ?? new List<AudioRecording>();
             }
             catch (Exception)
             {
+                // При любой ошибке (битый JSON, права доступа и т.д.) возвращаем пустой список
                 return new List<AudioRecording>();
             }
         }
 
-        // Сохраняем список записей в JSON файл
+        // Сохраняем список записей в JSON файл (вызывается после добавления/удаления записи)
         private async Task SaveRecordingsToFile(List<AudioRecording> recordings)
         {
             try
             {
-                // Преобразуем список в JSON (с отступами для читаемости)
+                // Сериализуем: превращаем список объектов в JSON-строку
+                // WriteIndented = true делает JSON читаемым (с отступами и переносами)
                 var json = JsonSerializer.Serialize(recordings, new JsonSerializerOptions
                 {
                     WriteIndented = true
                 });
 
-                // Записываем в файл
+                // Записываем JSON в файл
                 await File.WriteAllTextAsync(_dataFile, json);
             }
             catch (Exception ex)
