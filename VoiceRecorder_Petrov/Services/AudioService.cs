@@ -38,21 +38,41 @@ namespace VoiceRecorder_Petrov.Services
         // --- МЕТОДЫ СОХРАНЕНИЯ ---
         
         // Сохраняем новую запись (копируем файл + добавляем в JSON)
+        // Максимум 100 записей
         public async Task SaveRecording(string tempFilePath, int durationSeconds)
         {
             try
             {
-                // Шаг 1: Создаем имя файла с датой
+                // Шаг 1: Загружаем существующие записи
+                var recordings = await LoadRecordingsFromFile();
+                
+                // Шаг 2: Проверяем лимит (максимум 100 записей)
+                if (recordings.Count >= 100)
+                {
+                    // Автоматически удаляем самую старую запись
+                    var oldestRecording = recordings.OrderBy(r => r.CreatedDate).First();
+                    
+                    // Удаляем файл старой записи
+                    if (File.Exists(oldestRecording.FilePath))
+                    {
+                        File.Delete(oldestRecording.FilePath);
+                    }
+                    
+                    // Удаляем из списка
+                    recordings.Remove(oldestRecording);
+                }
+                
+                // Шаг 3: Создаем имя файла с датой
                 var fileName = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}.wav";
                 var newFilePath = Path.Combine(_recordingsFolder, fileName);
 
-                // Шаг 2: Копируем временный файл в постоянное место
+                // Шаг 4: Копируем временный файл в постоянное место
                 File.Copy(tempFilePath, newFilePath, true);
                 
-                // Шаг 3: Получаем размер файла
+                // Шаг 5: Получаем размер файла
                 var fileInfo = new FileInfo(newFilePath);
 
-                // Шаг 4: Создаем объект записи с информацией
+                // Шаг 6: Создаем объект записи с информацией
                 var recording = new AudioRecording
                 {
                     Title = $"Запись от {DateTime.Now:dd.MM.yyyy HH:mm}",
@@ -61,14 +81,11 @@ namespace VoiceRecorder_Petrov.Services
                     DurationSeconds = durationSeconds,
                     FileSizeBytes = fileInfo.Length
                 };
-
-                // Шаг 5: Загружаем существующие записи из JSON
-                var recordings = await LoadRecordingsFromFile();
                 
-                // Шаг 6: Добавляем новую запись
+                // Шаг 7: Добавляем новую запись
                 recordings.Add(recording);
                 
-                // Шаг 7: Сохраняем обратно в JSON
+                // Шаг 8: Сохраняем обратно в JSON
                 await SaveRecordingsToFile(recordings);
             }
             catch (Exception ex)
