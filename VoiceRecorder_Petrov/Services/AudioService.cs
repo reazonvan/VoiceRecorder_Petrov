@@ -11,19 +11,16 @@ using Android.Media;
 
 namespace VoiceRecorder_Petrov.Services
 {
-    // ========================================
-    // СЕРВИС ДЛЯ РАБОТЫ С АУДИОЗАПИСЯМИ
-    // Отвечает за сохранение, загрузку, воспроизведение и удаление записей
-    // Хранит данные: файлы в папке + информация в JSON
-    // ========================================
+    // Сервис для работы с записями:
+    // - хранение файлов в AppDataDirectory/Recordings
+    // - метаданные в recordings.json
+    // - воспроизведение выбранного файла
     public class AudioService
     {
-        // --- ПОЛЯ ---
-        
-        private readonly string _recordingsFolder;  // Папка для WAV файлов
-        private readonly string _dataFile;          // Файл с информацией (JSON)
-        // Флаг воспроизведения (сейчас не обязателен, но оставляем для понятности)
-        // Чтобы не было предупреждения CS0414, используем свойство вместо поля.
+        private readonly string _recordingsFolder;
+        private readonly string _dataFile;
+
+        // Флаг состояния нужен странице плеера/логике UI.
         private bool IsCurrentlyPlaying { get; set; } = false;
 
 #if ANDROID
@@ -35,8 +32,6 @@ namespace VoiceRecorder_Petrov.Services
         private AudioPlayer? _currentPlayer;        // Плеер для воспроизведения (не Android)
 #endif
 
-        // --- КОНСТРУКТОР ---
-        
         public AudioService()
         {
             // Путь к папке с записями (в данных приложения)
@@ -60,27 +55,22 @@ namespace VoiceRecorder_Petrov.Services
         {
             try
             {
-                // Шаг 1: Загружаем существующие записи
                 var recordings = await LoadRecordingsFromFile();
                 
-                // Шаг 2: Проверяем лимит (максимум 100 записей)
+                // Лимит: 100 записей. Если переполнено — удаляем самую старую.
                 if (recordings.Count >= 100)
                 {
-                    // Автоматически удаляем самую старую запись
                     var oldestRecording = recordings.OrderBy(r => r.CreatedDate).First();
                     
-                    // Удаляем файл старой записи
                     if (File.Exists(oldestRecording.FilePath))
                     {
                         File.Delete(oldestRecording.FilePath);
                     }
                     
-                    // Удаляем из списка
                     recordings.Remove(oldestRecording);
                 }
                 
-                // Шаг 3: Создаем имя файла с датой
-                // Берем расширение исходного файла (.wav/.m4a/и т.д.), чтобы не ломать воспроизведение
+                // Берём расширение исходного файла (.wav/.m4a/...), чтобы не ломать воспроизведение.
                 var ext = Path.GetExtension(tempFilePath);
                 if (string.IsNullOrWhiteSpace(ext))
                     ext = ".wav";
@@ -88,13 +78,10 @@ namespace VoiceRecorder_Petrov.Services
                 var fileName = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
                 var newFilePath = Path.Combine(_recordingsFolder, fileName);
 
-                // Шаг 4: Копируем временный файл в постоянное место
                 File.Copy(tempFilePath, newFilePath, true);
                 
-                // Шаг 5: Получаем размер файла
                 var fileInfo = new FileInfo(newFilePath);
 
-                // Шаг 6: Создаем объект записи с информацией
                 var recording = new AudioRecording
                 {
                     Title = $"Запись от {DateTime.Now:dd.MM.yyyy HH:mm}",
@@ -104,10 +91,8 @@ namespace VoiceRecorder_Petrov.Services
                     FileSizeBytes = fileInfo.Length
                 };
                 
-                // Шаг 7: Добавляем новую запись
                 recordings.Add(recording);
                 
-                // Шаг 8: Сохраняем обратно в JSON
                 await SaveRecordingsToFile(recordings);
             }
             catch (Exception ex)
@@ -161,22 +146,27 @@ namespace VoiceRecorder_Petrov.Services
 #if ANDROID
                     lock (_playerLock)
                     {
-                        _androidPlayer = new MediaPlayer();
-                        _androidPlayer.SetDataSource(filePath);
+                        MediaPlayer player = new MediaPlayer();
+                        _androidPlayer = player;
+                        player.SetDataSource(filePath);
                         
                         // Без Stream.* (чтобы не было конфликта с System.IO.Stream)
                         // AudioAttributes доступны с API 21+
-                        _androidPlayer.SetAudioAttributes(
-                            new AudioAttributes.Builder()
-                                .SetUsage(AudioUsageKind.Media)
-                                .SetContentType(AudioContentType.Music)
-                                .Build());
+                        if (OperatingSystem.IsAndroidVersionAtLeast(21))
+                        {
+                            var builder = new AudioAttributes.Builder();
+                            builder.SetUsage(AudioUsageKind.Media);
+                            builder.SetContentType(AudioContentType.Music);
+                            var attributes = builder.Build();
+                            if (attributes != null)
+                                player.SetAudioAttributes(attributes);
+                        }
 
                         // Когда дошли до конца - чистим ресурсы
-                        _androidPlayer.Completion += (_, __) => StopPlayback();
+                        player.Completion += (_, __) => StopPlayback();
 
-                        _androidPlayer.Prepare();
-                        _androidPlayer.Start();
+                        player.Prepare();
+                        player.Start();
                         IsCurrentlyPlaying = true;
                     }
 #else
@@ -229,7 +219,9 @@ namespace VoiceRecorder_Petrov.Services
             }
             catch
             {
+#if !ANDROID
                 _currentPlayer = null;
+#endif
                 IsCurrentlyPlaying = false;
             }
         }

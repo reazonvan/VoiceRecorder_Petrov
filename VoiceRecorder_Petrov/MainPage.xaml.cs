@@ -12,34 +12,28 @@ using Android.Media;
 
 namespace VoiceRecorder_Petrov
 {
-    // ========================================
-    // ГЛАВНАЯ СТРАНИЦА ПРИЛОЖЕНИЯ
-    // Отвечает за запись голоса и отображение списка записей
-    // ========================================
+    // Главная страница: запись с микрофона + список сохранённых записей.
     public partial class MainPage : ContentPage
     {
-        // --- ПОЛЯ КЛАССА ---
-        
-        private readonly AudioService _audioService;        // Сервис для работы с файлами и JSON
-        private System.Threading.Timer? _timer;              // Таймер для отсчета времени записи
-        private int _seconds = 0;                            // Счетчик секунд записи
-        private bool _isRecording = false;                   // Флаг: идет запись или нет
-        private bool _isBusy = false;                        // Флаг: идет старт/стоп (защита от двойных нажатий)
+        private readonly AudioService _audioService;
+        private System.Threading.Timer? _timer;
+        private int _seconds = 0;
+        private bool _isRecording = false;
+        private bool _isBusy = false; // защита от двойного нажатия Start/Stop
 
 #if !ANDROID
-        // Для не-Android платформ оставляем Plugin.AudioRecorder как запасной вариант
-        private AudioRecorderService? _recorder;             // Объект для записи звука с микрофона
-        private string? _recordingFilePath = null;           // Путь к файлу (сохраняем при старте)
-        private Task<string>? _recordingTask = null;         // Задача, которая вернет путь (ждем после Stop)
+        // На не-Android используем плагин как простой вариант.
+        private AudioRecorderService? _recorder;
+        private string? _recordingFilePath = null;
+        private Task<string>? _recordingTask = null;
 #endif
 
 #if ANDROID
-        private MediaRecorder? _androidRecorder;             // Android рекордер (стабильнее, чем Plugin.AudioRecorder)
-        private string? _androidTempFilePath;                // Куда пишем временный файл (потом копируем в Recordings)
+        // На Android используем MediaRecorder: стабильнее и даёт предсказуемый файл.
+        private MediaRecorder? _androidRecorder;
+        private string? _androidTempFilePath; // временный файл в CacheDirectory
 #endif
 
-        // --- КОНСТРУКТОР ---
-        
         public MainPage()
         {
             InitializeComponent();
@@ -95,7 +89,7 @@ namespace VoiceRecorder_Petrov
         {
             try
             {
-                // Шаг 1: Запрашиваем разрешение на микрофон
+                // Разрешение на микрофон.
                 var status = await Permissions.RequestAsync<Permissions.Microphone>();
                 if (status != PermissionStatus.Granted)
                 {
@@ -103,9 +97,7 @@ namespace VoiceRecorder_Petrov
                     return;
                 }
 
-                // Шаг 2: Старт записи
-                // На Android используем MediaRecorder (намного стабильнее, чем Plugin.AudioRecorder).
-                // На остальных платформах оставляем Plugin.AudioRecorder как запасной вариант.
+                // Старт записи (Android: MediaRecorder, остальные: Plugin.AudioRecorder).
 #if ANDROID
                 if (!StartRecordingAndroid())
                 {
@@ -133,16 +125,14 @@ namespace VoiceRecorder_Petrov
                 }
 #endif
 
-                // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
                 _seconds = 0;
                 
-                // Шаг 5: Обновляем кнопку
                 RecordButton.Text = "Остановить запись";
                 RecordButton.BackgroundColor = Color.FromArgb("#FF3B30");  // Красная
                 StatusLabel.Text = "Идет запись...";
                 
-                // Шаг 6: Запускаем таймер (каждую секунду обновляет экран)
+                // Таймер только для UI.
                 _timer = new System.Threading.Timer(_ =>
                 {
                     _seconds++;  // Увеличиваем счетчик
@@ -167,11 +157,9 @@ namespace VoiceRecorder_Petrov
         {
             try
             {
-                // Шаг 1: Останавливаем таймер
                 _timer?.Dispose();
                 _timer = null;
 
-                // Шаг 2: Останавливаем запись и получаем путь к временному файлу
                 string? tempFilePath = null;
 
 #if ANDROID
@@ -204,7 +192,6 @@ namespace VoiceRecorder_Petrov
                 for (int i = 0; i < 8 && !string.IsNullOrEmpty(tempFilePath) && !File.Exists(tempFilePath); i++)
                     await Task.Delay(250);
 
-                // Шаг 3: Сохраняем
                 if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
                 {
                     await _audioService.SaveRecording(tempFilePath, _seconds);
@@ -233,7 +220,6 @@ namespace VoiceRecorder_Petrov
 #endif
                 }
 
-                // Шаг 7: Сбрасываем состояние
                 _isRecording = false;
                 RecordButton.Text = "Начать запись";
                 RecordButton.BackgroundColor = Color.FromArgb("#007AFF");  // Синяя
@@ -274,12 +260,19 @@ namespace VoiceRecorder_Petrov
                 if (File.Exists(_androidTempFilePath))
                     File.Delete(_androidTempFilePath);
 
-#if ANDROID31_0_OR_GREATER
-                // Начиная с Android 12 (API 31) рекомендуется конструктор с Context
-                _androidRecorder = new MediaRecorder(Android.App.Application.Context);
-#else
-                _androidRecorder = new MediaRecorder();
-#endif
+                // Начиная с Android 12 (API 31) рекомендуется конструктор с Context,
+                // но на более старых версиях его нет — выбираем по runtime-версии ОС.
+                if (OperatingSystem.IsAndroidVersionAtLeast(31))
+                {
+                    _androidRecorder = new MediaRecorder(Android.App.Application.Context);
+                }
+                else
+                {
+                    // MediaRecorder() помечен obsolete начиная с Android 31, но на <31 это корректный путь.
+#pragma warning disable CS0618
+                    _androidRecorder = new MediaRecorder();
+#pragma warning restore CS0618
+                }
                 _androidRecorder.SetAudioSource(AudioSource.Mic);
                 _androidRecorder.SetOutputFormat(OutputFormat.Mpeg4);
                 _androidRecorder.SetAudioEncoder(AudioEncoder.Aac);

@@ -3,23 +3,15 @@ using VoiceRecorder_Petrov.Services;
 
 namespace VoiceRecorder_Petrov
 {
-    // ========================================
-    // СТРАНИЦА ПЛЕЕРА
-    // Отвечает за воспроизведение голосовых записей
-    // Показывает информацию и управление воспроизведением
-    // ========================================
+    // Страница воспроизведения выбранной записи (без сложного seek'а: старт/стоп и таймер).
     public partial class PlayerPage : ContentPage
     {
-        // --- ПОЛЯ ---
-        
-        private readonly AudioRecording _recording;     // Запись которую воспроизводим
-        private readonly AudioService _audioService;    // Сервис для воспроизведения
-        private System.Threading.Timer? _timer;         // Таймер для отсчета времени
-        private int _elapsedSeconds = 0;                // Сколько секунд прошло
-        private bool _isPlaying = false;                // Флаг: играет или нет
+        private readonly AudioRecording _recording;
+        private readonly AudioService _audioService;
+        private System.Threading.Timer? _timer;
+        private int _elapsedSeconds = 0;
+        private bool _isPlaying = false;
 
-        // --- КОНСТРУКТОР ---
-        
         public PlayerPage(AudioRecording recording, AudioService audioService)
         {
             InitializeComponent();
@@ -36,8 +28,6 @@ namespace VoiceRecorder_Petrov
             StartPlayback();
         }
 
-        // --- МЕТОДЫ УПРАВЛЕНИЯ ---
-        
         // Обработчик кнопки Play/Stop
         private void OnPlayPauseClicked(object sender, EventArgs e)
         {
@@ -58,22 +48,16 @@ namespace VoiceRecorder_Petrov
         {
             try
             {
-                // Шаг 1: Сбрасываем счетчик
                 _elapsedSeconds = 0;
-                
-                // Шаг 2: Останавливаем предыдущее (если было)
                 _audioService.StopPlayback();
-                
-                // Шаг 3: Запускаем воспроизведение файла
                 _audioService.PlayRecording(_recording.FilePath);
                 
                 _isPlaying = true;
                 
-                // Шаг 4: Меняем кнопку
                 PlayPauseButton.Text = "Остановить";
                 PlayPauseButton.BackgroundColor = Color.FromArgb("#FF3B30");  // Красная
                 
-                // Шаг 5: Запускаем таймер (каждую секунду)
+                // Таймер нужен только для отображения времени и авто-стопа по длительности.
                 _timer = new System.Threading.Timer(_ =>
                 {
                     _elapsedSeconds++;
@@ -102,22 +86,17 @@ namespace VoiceRecorder_Petrov
         // Останавливаем воспроизведение
         private void StopPlayback()
         {
-            // Шаг 1: Останавливаем таймер
             _timer?.Dispose();
             _timer = null;
             
-            // Шаг 2: Останавливаем аудио
             _audioService.StopPlayback();
             
             _isPlaying = false;
             
-            // Шаг 3: Меняем кнопку
             PlayPauseButton.Text = "Воспроизвести заново";
             PlayPauseButton.BackgroundColor = Color.FromArgb("#007AFF");  // Синяя
         }
 
-        // --- ОБРАБОТЧИКИ СОБЫТИЙ ---
-        
         // Нажатие на крестик (закрыть плеер)
         private async void OnCloseClicked(object sender, EventArgs e)
         {

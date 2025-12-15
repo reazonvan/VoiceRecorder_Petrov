@@ -1,24 +1,16 @@
 namespace VoiceRecorder_Petrov.Models
 {
-    // ========================================
-    // МОДЕЛЬ АУДИОЗАПИСИ
-    // Хранит всю информацию об одной голосовой записи
-    // Используется для отображения в списке и сохранения в JSON
-    // ========================================
+    // Метаданные одной записи: то, что сохраняем в JSON и показываем в списке.
     public class AudioRecording
     {
-        // --- ОСНОВНЫЕ СВОЙСТВА ---
-        
-        public string Id { get; set; } = Guid.NewGuid().ToString();  // Уникальный ID
-        public string Title { get; set; } = string.Empty;             // Название записи
-        public string FilePath { get; set; } = string.Empty;          // Путь к WAV файлу
-        public DateTime CreatedDate { get; set; } = DateTime.Now;     // Дата создания
-        public int DurationSeconds { get; set; } = 0;                 // Длительность в секундах
-        public long FileSizeBytes { get; set; } = 0;                  // Размер файла в байтах
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Title { get; set; } = string.Empty;
+        public string FilePath { get; set; } = string.Empty;
+        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public int DurationSeconds { get; set; } = 0;
+        public long FileSizeBytes { get; set; } = 0;
 
-        // --- ФОРМАТИРОВАННЫЕ СВОЙСТВА (для отображения) ---
-        
-        // Длительность в формате MM:SS (например: 02:15)
+        // Для UI: MM:SS.
         public string FormattedDuration
         {
             get
@@ -29,10 +21,10 @@ namespace VoiceRecorder_Petrov.Models
             }
         }
 
-        // Дата в формате DD.MM.YYYY HH:MM (например: 15.12.2025 14:30)
+        // Для UI: dd.MM.yyyy HH:mm.
         public string FormattedDate => CreatedDate.ToString("dd.MM.yyyy HH:mm");
 
-        // Размер файла в понятном виде (байты → КБ → МБ)
+        // Для UI: байт/КБ/МБ.
         public string FormattedFileSize
         {
             get
