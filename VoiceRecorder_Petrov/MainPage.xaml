@@ -42,7 +42,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Кнопка записи -->
+            <!-- Кнопка записи (Пауза/Продолжить) -->
             <Button x:Name="RecordButton"
                     Text="Начать запись"
                     FontSize="18"
@@ -52,6 +52,18 @@
                     HeightRequest="60"
                     CornerRadius="30"
                     Clicked="OnRecordButtonClicked"/>
+
+            <!-- Кнопка завершения записи (видна только при записи) -->
+            <Button x:Name="FinishButton"
+                    Text="Завершить и сохранить запись"
+                    FontSize="16"
+                    FontAttributes="Bold"
+                    BackgroundColor="#FF3B30"
+                    TextColor="White"
+                    HeightRequest="55"
+                    CornerRadius="28"
+                    IsVisible="False"
+                    Clicked="OnFinishButtonClicked"/>
 
             <!-- Заголовок списка -->
             <Label Text="Мои записи" 

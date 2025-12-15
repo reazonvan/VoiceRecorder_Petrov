@@ -21,6 +21,9 @@ namespace VoiceRecorder_Petrov
         
         // Флаг - идет ли запись сейчас
         private bool _isRecording = false;
+        
+        // Флаг - запись на паузе
+        private bool _isPaused = false;
 
         public MainPage()
         {
@@ -50,15 +53,20 @@ namespace VoiceRecorder_Petrov
         // Нажатие на кнопку записи
         private async void OnRecordButtonClicked(object sender, EventArgs e)
         {
-            if (_isRecording)
-            {
-                // Останавливаем запись
-                await StopRecording();
-            }
-            else
+            if (!_isRecording)
             {
                 // Начинаем запись
                 await StartRecording();
+            }
+            else if (_isPaused)
+            {
+                // Возобновляем запись (снимаем с паузы)
+                ResumeRecording();
+            }
+            else
+            {
+                // Ставим на паузу
+                PauseRecording();
             }
         }
 
@@ -87,12 +95,16 @@ namespace VoiceRecorder_Petrov
 
                 // Меняем состояние
                 _isRecording = true;
+                _isPaused = false;
                 _seconds = 0;
                 
                 // Обновляем UI
-                RecordButton.Text = "Остановить запись";
-                RecordButton.BackgroundColor = Color.FromArgb("#FF3B30");
+                RecordButton.Text = "Пауза";
+                RecordButton.BackgroundColor = Color.FromArgb("#FF9500");
                 StatusLabel.Text = "Идет запись...";
+                
+                // Показываем кнопку завершения
+                FinishButton.IsVisible = true;
                 
                 // Запускаем таймер (обновляется каждую секунду)
                 _timer = new System.Threading.Timer(_ =>
@@ -112,7 +124,47 @@ namespace VoiceRecorder_Petrov
             }
         }
 
-        // Останавливаем запись
+        // Ставим запись на паузу
+        private void PauseRecording()
+        {
+            // Останавливаем таймер
+            _timer?.Dispose();
+            _timer = null;
+            
+            // Меняем флаг
+            _isPaused = true;
+            
+            // Меняем кнопку
+            RecordButton.Text = "Продолжить запись";
+            RecordButton.BackgroundColor = Color.FromArgb("#34C759");
+            StatusLabel.Text = "Запись на паузе";
+        }
+
+        // Возобновляем запись
+        private void ResumeRecording()
+        {
+            // Меняем флаг
+            _isPaused = false;
+            
+            // Меняем кнопку обратно
+            RecordButton.Text = "Пауза";
+            RecordButton.BackgroundColor = Color.FromArgb("#FF9500");
+            StatusLabel.Text = "Идет запись...";
+            
+            // Запускаем таймер обратно (продолжаем с текущего значения _seconds)
+            _timer = new System.Threading.Timer(_ =>
+            {
+                _seconds++;
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    var minutes = _seconds / 60;
+                    var secs = _seconds % 60;
+                    TimerLabel.Text = $"{minutes:00}:{secs:00}";
+                });
+            }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+
+        // Останавливаем запись и сохраняем
         private async Task StopRecording()
         {
             try
@@ -148,10 +200,14 @@ namespace VoiceRecorder_Petrov
 
                 // Меняем состояние обратно
                 _isRecording = false;
+                _isPaused = false;
                 RecordButton.Text = "Начать запись";
                 RecordButton.BackgroundColor = Color.FromArgb("#007AFF");
                 StatusLabel.Text = "Готово к записи";
                 TimerLabel.Text = "00:00";
+                
+                // Скрываем кнопку завершения
+                FinishButton.IsVisible = false;
             }
             catch (Exception ex)
             {
@@ -198,6 +254,13 @@ namespace VoiceRecorder_Petrov
             {
                 await DisplayAlertAsync("Ошибка", $"Не удалось воспроизвести: {ex.Message}", "OK");
             }
+        }
+
+        // Нажатие на кнопку "Завершить запись"
+        private async void OnFinishButtonClicked(object sender, EventArgs e)
+        {
+            // Завершаем запись и сохраняем
+            await StopRecording();
         }
 
         // Нажатие на кнопку удаления
