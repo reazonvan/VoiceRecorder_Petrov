@@ -24,8 +24,11 @@ namespace VoiceRecorder_Petrov
             // Устанавливаем максимум слайдера
             SeekSlider.Maximum = recording.DurationSeconds;
             
-            // Загружаем аудио файл в плеер
+            // Загружаем аудио файл в плеер (ShouldAutoPlay=True, поэтому запустится сам)
             AudioPlayer.Source = MediaSource.FromFile(recording.FilePath);
+            
+            // Меняем кнопку на паузу (т.к. автоплей включен)
+            PlayPauseButton.Text = "⏸";
         }
 
         // Событие - позиция воспроизведения изменилась
@@ -53,11 +56,13 @@ namespace VoiceRecorder_Petrov
         // Событие - воспроизведение закончилось
         private void OnMediaEnded(object sender, EventArgs e)
         {
-            // Меняем кнопку на Play
+            // Останавливаем плеер
+            AudioPlayer.Stop();
+            
+            // Меняем кнопку на Play (теперь можно запустить заново)
             PlayPauseButton.Text = "▶";
             
             // Сбрасываем позицию в начало
-            AudioPlayer.SeekTo(TimeSpan.Zero);
             SeekSlider.Value = 0;
             CurrentTimeLabel.Text = "00:00";
             ProgressBar.Progress = 0;
@@ -83,9 +88,22 @@ namespace VoiceRecorder_Petrov
                 AudioPlayer.Pause();
                 PlayPauseButton.Text = "▶";
             }
+            else if (stateName == "Paused")
+            {
+                // Возобновляем с того же места
+                AudioPlayer.Play();
+                PlayPauseButton.Text = "⏸";
+            }
+            else if (stateName == "Stopped")
+            {
+                // Запускаем заново с начала
+                AudioPlayer.Source = MediaSource.FromFile(_recording.FilePath);
+                AudioPlayer.Play();
+                PlayPauseButton.Text = "⏸";
+            }
             else
             {
-                // Запускаем воспроизведение
+                // На всякий случай - просто запускаем
                 AudioPlayer.Play();
                 PlayPauseButton.Text = "⏸";
             }
