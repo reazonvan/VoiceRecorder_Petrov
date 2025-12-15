@@ -155,6 +155,16 @@ namespace VoiceRecorder_Petrov
                     {
                         tempFilePath = _recorder.GetAudioFilePath();
                     }
+
+                    // Доп. попытки дождаться файла (5 раз по 200 мс)
+                    for (int i = 0; i < 5 && (!string.IsNullOrEmpty(tempFilePath) && !File.Exists(tempFilePath)); i++)
+                    {
+                        await Task.Delay(200);
+                        if (string.IsNullOrEmpty(tempFilePath))
+                        {
+                            tempFilePath = _recorder.GetAudioFilePath();
+                        }
+                    }
                     
                     // Шаг 5: Проверяем файл
                     if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
