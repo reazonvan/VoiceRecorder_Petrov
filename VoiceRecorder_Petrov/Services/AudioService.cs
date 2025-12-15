@@ -13,8 +13,11 @@ namespace VoiceRecorder_Petrov.Services
         // Файл с информацией о записях (JSON)
         private readonly string _dataFile;
         
-        // Плеер для воспроизведения (можем пересоздавать)
-        private AudioPlayer? _player;
+        // Текущий плеер для воспроизведения
+        private AudioPlayer? _currentPlayer;
+        
+        // Флаг что сейчас играет
+        private bool _isCurrentlyPlaying = false;
 
         public AudioService()
         {
@@ -98,18 +101,22 @@ namespace VoiceRecorder_Petrov.Services
             }
         }
 
-        // Воспроизводим запись (просто запускаем и всё)
+        // Воспроизводим запись
         public void PlayRecording(string filePath)
         {
             try
             {
                 if (File.Exists(filePath))
                 {
-                    // Создаем новый плеер (это останавливает предыдущий)
-                    _player = new AudioPlayer();
+                    // Сначала останавливаем текущее воспроизведение
+                    StopPlayback();
+                    
+                    // Создаем новый плеер
+                    _currentPlayer = new AudioPlayer();
                     
                     // Запускаем воспроизведение
-                    _player.Play(filePath);
+                    _currentPlayer.Play(filePath);
+                    _isCurrentlyPlaying = true;
                 }
                 else
                 {
@@ -122,18 +129,31 @@ namespace VoiceRecorder_Petrov.Services
             }
         }
 
-        // Останавливаем воспроизведение
+        // Останавливаем воспроизведение (более надежный способ)
         public void StopPlayback()
         {
             try
             {
-                // Создаем новый плеер - это останавливает текущее воспроизведение
-                // Старый плеер автоматически останавливается когда создается новый
-                _player = new AudioPlayer();
+                if (_isCurrentlyPlaying)
+                {
+                    // Создаем временный новый плеер
+                    // Это гарантированно останавливает старый
+                    var tempPlayer = new AudioPlayer();
+                    tempPlayer.Play(string.Empty);
+                    
+                    // Обнуляем текущий
+                    _currentPlayer = null;
+                    _isCurrentlyPlaying = false;
+                    
+                    // Небольшая задержка для гарантии остановки
+                    System.Threading.Thread.Sleep(100);
+                }
             }
             catch
             {
-                // Игнорируем ошибки
+                // Игнорируем ошибки, главное чтобы остановилось
+                _currentPlayer = null;
+                _isCurrentlyPlaying = false;
             }
         }
 
