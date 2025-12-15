@@ -81,8 +81,8 @@ namespace VoiceRecorder_Petrov
                     StopRecordingAfterTimeout = false    // Не останавливать по таймауту
                 };
 
-                // Шаг 3: Начинаем запись
-                await _recorder.StartRecording();
+                // Шаг 3: Начинаем запись (запускаем асинхронно)
+                _recorder.StartRecording();
 
                 // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
@@ -127,24 +127,26 @@ namespace VoiceRecorder_Petrov
                     // Шаг 2: Останавливаем запись
                     await _recorder.StopRecording();
                     
-                    // Шаг 3: Даем время на сохранение файла (300ms)
-                    await Task.Delay(300);
+                    // Шаг 3: Даем БОЛЬШЕ времени на сохранение (1 секунда)
+                    await Task.Delay(1000);
                     
-                    // Шаг 4: Получаем путь к временному файлу
+                    // Шаг 4: Получаем путь через GetAudioFilePath
                     var tempFilePath = _recorder.GetAudioFilePath();
                     
-                    // Шаг 5: Проверяем что файл создан
+                    // Шаг 5: Проверяем файл
                     if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
                     {
-                        // Шаг 6: Сохраняем через сервис (копирует файл + добавляет в JSON)
+                        // Файл найден - сохраняем!
                         await _audioService.SaveRecording(tempFilePath, _seconds);
-                        
                         await DisplayAlertAsync("Успех", "Запись сохранена!", "OK");
-                        LoadRecordings();  // Обновляем список
+                        LoadRecordings();
                     }
                     else
                     {
-                        await DisplayAlertAsync("Ошибка", "Файл записи не найден", "OK");
+                        // Показываем путь для отладки
+                        await DisplayAlertAsync("Ошибка", 
+                            $"Файл не найден.\n\nПуть: {tempFilePath ?? "null"}\n\nСекунд записано: {_seconds}", 
+                            "OK");
                     }
                 }
 
