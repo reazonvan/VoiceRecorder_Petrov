@@ -17,6 +17,7 @@ namespace VoiceRecorder_Petrov
         private System.Threading.Timer? _timer;              // Таймер для отсчета времени записи
         private int _seconds = 0;                            // Счетчик секунд записи
         private bool _isRecording = false;                   // Флаг: идет запись или нет
+        private string? _recordingFilePath = null;           // Путь к файлу (сохраняем при старте)
 
         // --- КОНСТРУКТОР ---
         
@@ -81,8 +82,18 @@ namespace VoiceRecorder_Petrov
                     StopRecordingAfterTimeout = false    // Не останавливать по таймауту
                 };
 
-                // Шаг 3: Начинаем запись (запускаем асинхронно)
-                _recorder.StartRecording();
+                // Шаг 3: Начинаем запись ПРАВИЛЬНО
+                // StartRecording() возвращает Task<Task<string>>
+                // Нужно получить результат через двойной await
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        var innerTask = await _recorder.StartRecording();  // Первый await
+                        _recordingFilePath = await innerTask;                // Второй await = путь к файлу
+                    }
+                    catch { }
+                });
 
                 // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
@@ -130,8 +141,8 @@ namespace VoiceRecorder_Petrov
                     // Шаг 3: Даем БОЛЬШЕ времени на сохранение (1 секунда)
                     await Task.Delay(1000);
                     
-                    // Шаг 4: Получаем путь через GetAudioFilePath
-                    var tempFilePath = _recorder.GetAudioFilePath();
+                    // Шаг 4: Получаем путь (сначала пробуем сохраненный, потом GetAudioFilePath)
+                    var tempFilePath = _recordingFilePath ?? _recorder.GetAudioFilePath();
                     
                     // Шаг 5: Проверяем файл
                     if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
@@ -143,11 +154,15 @@ namespace VoiceRecorder_Petrov
                     }
                     else
                     {
-                        // Показываем путь для отладки
-                        await DisplayAlertAsync("Ошибка", 
-                            $"Файл не найден.\n\nПуть: {tempFilePath ?? "null"}\n\nСекунд записано: {_seconds}", 
+                        // Показываем отладочную информацию
+                        await DisplayAlertAsync("Отладка", 
+                            $"recordingFilePath: {_recordingFilePath ?? "null"}\n" +
+                            $"GetAudioFilePath: {_recorder.GetAudioFilePath() ?? "null"}\n" +
+                            $"Секунд: {_seconds}", 
                             "OK");
                     }
+                    
+                    _recordingFilePath = null;
                 }
 
                 // Шаг 7: Сбрасываем состояние
