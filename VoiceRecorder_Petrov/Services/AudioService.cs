@@ -1,6 +1,9 @@
-using Plugin.AudioRecorder;
 using System.Text.Json;
 using VoiceRecorder_Petrov.Models;
+
+#if !ANDROID
+using Plugin.AudioRecorder;
+#endif
 
 #if ANDROID
 using Android.Media;
@@ -19,14 +22,17 @@ namespace VoiceRecorder_Petrov.Services
         
         private readonly string _recordingsFolder;  // Папка для WAV файлов
         private readonly string _dataFile;          // Файл с информацией (JSON)
-        private AudioPlayer? _currentPlayer;        // Плеер для воспроизведения
-        private bool _isCurrentlyPlaying = false;   // Флаг воспроизведения
+        // Флаг воспроизведения (сейчас не обязателен, но оставляем для понятности)
+        // Чтобы не было предупреждения CS0414, используем свойство вместо поля.
+        private bool IsCurrentlyPlaying { get; set; } = false;
 
 #if ANDROID
         // На Android используем MediaPlayer - он корректно и сразу останавливается,
         // в отличие от "killer" хака с AudioPlayer.
         private MediaPlayer? _androidPlayer;
         private readonly object _playerLock = new object();
+#else
+        private AudioPlayer? _currentPlayer;        // Плеер для воспроизведения (не Android)
 #endif
 
         // --- КОНСТРУКТОР ---
@@ -155,19 +161,23 @@ namespace VoiceRecorder_Petrov.Services
 #if ANDROID
                     lock (_playerLock)
                     {
-                        // На всякий случай стопаем ещё раз внутри lock
-                        StopPlayback();
-
                         _androidPlayer = new MediaPlayer();
                         _androidPlayer.SetDataSource(filePath);
-                        _androidPlayer.SetAudioStreamType(Stream.Music);
+                        
+                        // Без Stream.* (чтобы не было конфликта с System.IO.Stream)
+                        // AudioAttributes доступны с API 21+
+                        _androidPlayer.SetAudioAttributes(
+                            new AudioAttributes.Builder()
+                                .SetUsage(AudioUsageKind.Media)
+                                .SetContentType(AudioContentType.Music)
+                                .Build());
 
                         // Когда дошли до конца - чистим ресурсы
                         _androidPlayer.Completion += (_, __) => StopPlayback();
 
                         _androidPlayer.Prepare();
                         _androidPlayer.Start();
-                        _isCurrentlyPlaying = true;
+                        IsCurrentlyPlaying = true;
                     }
 #else
                     // Создаем новый плеер
@@ -175,7 +185,7 @@ namespace VoiceRecorder_Petrov.Services
 
                     // Запускаем воспроизведение
                     _currentPlayer.Play(filePath);
-                    _isCurrentlyPlaying = true;
+                    IsCurrentlyPlaying = true;
 #endif
                 }
                 else
@@ -194,9 +204,6 @@ namespace VoiceRecorder_Petrov.Services
         {
             try
             {
-                if (!_isCurrentlyPlaying)
-                    return;
-
 #if ANDROID
                 lock (_playerLock)
                 {
@@ -212,18 +219,18 @@ namespace VoiceRecorder_Petrov.Services
                     }
                     finally
                     {
-                        _isCurrentlyPlaying = false;
+                        IsCurrentlyPlaying = false;
                     }
                 }
 #else
+                IsCurrentlyPlaying = false;
                 _currentPlayer = null;
-                _isCurrentlyPlaying = false;
 #endif
             }
             catch
             {
                 _currentPlayer = null;
-                _isCurrentlyPlaying = false;
+                IsCurrentlyPlaying = false;
             }
         }
 

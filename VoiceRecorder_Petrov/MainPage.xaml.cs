@@ -1,7 +1,10 @@
-﻿using Plugin.AudioRecorder;
-using VoiceRecorder_Petrov.Models;
+﻿using VoiceRecorder_Petrov.Models;
 using VoiceRecorder_Petrov.Services;
 using System.Threading.Tasks;
+
+#if !ANDROID
+using Plugin.AudioRecorder;
+#endif
 
 #if ANDROID
 using Android.Media;
@@ -18,13 +21,17 @@ namespace VoiceRecorder_Petrov
         // --- ПОЛЯ КЛАССА ---
         
         private readonly AudioService _audioService;        // Сервис для работы с файлами и JSON
-        private AudioRecorderService? _recorder;             // Объект для записи звука с микрофона
         private System.Threading.Timer? _timer;              // Таймер для отсчета времени записи
         private int _seconds = 0;                            // Счетчик секунд записи
         private bool _isRecording = false;                   // Флаг: идет запись или нет
+        private bool _isBusy = false;                        // Флаг: идет старт/стоп (защита от двойных нажатий)
+
+#if !ANDROID
+        // Для не-Android платформ оставляем Plugin.AudioRecorder как запасной вариант
+        private AudioRecorderService? _recorder;             // Объект для записи звука с микрофона
         private string? _recordingFilePath = null;           // Путь к файлу (сохраняем при старте)
         private Task<string>? _recordingTask = null;         // Задача, которая вернет путь (ждем после Stop)
-        private bool _isBusy = false;                        // Флаг: идет старт/стоп (защита от двойных нажатий)
+#endif
 
 #if ANDROID
         private MediaRecorder? _androidRecorder;             // Android рекордер (стабильнее, чем Plugin.AudioRecorder)
@@ -267,7 +274,12 @@ namespace VoiceRecorder_Petrov
                 if (File.Exists(_androidTempFilePath))
                     File.Delete(_androidTempFilePath);
 
+#if ANDROID31_0_OR_GREATER
+                // Начиная с Android 12 (API 31) рекомендуется конструктор с Context
+                _androidRecorder = new MediaRecorder(Android.App.Application.Context);
+#else
                 _androidRecorder = new MediaRecorder();
+#endif
                 _androidRecorder.SetAudioSource(AudioSource.Mic);
                 _androidRecorder.SetOutputFormat(OutputFormat.Mpeg4);
                 _androidRecorder.SetAudioEncoder(AudioEncoder.Aac);
