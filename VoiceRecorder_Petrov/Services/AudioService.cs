@@ -122,6 +122,20 @@ namespace VoiceRecorder_Petrov.Services
             }
         }
 
+        // Останавливаем воспроизведение
+        public void StopPlayback()
+        {
+            try
+            {
+                // AudioPlayer автоматически останавливается при вызове нового Play
+                // Этот метод нужен для явной остановки перед новым воспроизведением
+            }
+            catch
+            {
+                // Игнорируем ошибки остановки
+            }
+        }
+
         // Удаляем запись
         public async Task DeleteRecording(AudioRecording recording)
         {
