@@ -13,23 +13,8 @@ namespace VoiceRecorder_Petrov.Services
         // Файл с информацией о записях (JSON)
         private readonly string _dataFile;
         
-        // Плеер для воспроизведения
-        private readonly AudioPlayer _player;
-        
-        // Текущая позиция воспроизведения
-        private double _currentPosition = 0;
-        
-        // Общая длительность
-        private double _totalDuration = 0;
-        
-        // Флаг воспроизведения
-        private bool _isPlaying = false;
-        
-        // Таймер для отслеживания позиции
-        private System.Threading.Timer? _positionTimer;
-        
-        // Время начала воспроизведения
-        private DateTime _playStartTime;
+        // Плеер с поддержкой паузы и перемотки
+        private readonly SimpleAudioPlayer _player;
 
         public AudioService()
         {
@@ -46,7 +31,7 @@ namespace VoiceRecorder_Petrov.Services
             }
             
             // Создаем плеер
-            _player = new AudioPlayer();
+            _player = new SimpleAudioPlayer();
         }
 
         // Сохраняем новую запись
@@ -121,90 +106,54 @@ namespace VoiceRecorder_Petrov.Services
         {
             try
             {
-                if (File.Exists(filePath))
-                {
-                    // Останавливаем предыдущее воспроизведение
-                    StopPlayback();
-                    
-                    // Запускаем новое
-                    _player.Play(filePath);
-                    _isPlaying = true;
-                    _currentPosition = 0;
-                    _playStartTime = DateTime.Now;
-                    
-                    // Получаем длительность из файла
-                    var recording = (await GetAllRecordings()).FirstOrDefault(r => r.FilePath == filePath);
-                    _totalDuration = recording?.DurationSeconds ?? 0;
-                    
-                    // Запускаем таймер для отслеживания позиции
-                    _positionTimer = new System.Threading.Timer(_ =>
-                    {
-                        if (_isPlaying)
-                        {
-                            _currentPosition = (DateTime.Now - _playStartTime).TotalSeconds;
-                            
-                            // Если достигли конца - останавливаем
-                            if (_currentPosition >= _totalDuration)
-                            {
-                                StopPlayback();
-                            }
-                        }
-                    }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
-                }
-                else
-                {
-                    throw new Exception("Файл записи не найден");
-                }
+                await _player.Play(filePath);
             }
             catch (Exception ex)
             {
                 throw new Exception($"Ошибка при воспроизведении: {ex.Message}");
             }
-            
-            await Task.CompletedTask;
         }
 
         // Ставим на паузу
         public void PausePlayback()
         {
-            if (_isPlaying)
-            {
-                _isPlaying = false;
-                // AudioPlayer из Plugin.AudioRecorder не поддерживает паузу
-                // Поэтому просто останавливаем и запоминаем позицию
-            }
+            _player.Pause();
         }
 
         // Возобновляем воспроизведение
         public void ResumePlayback()
         {
-            if (!_isPlaying)
-            {
-                _isPlaying = true;
-                _playStartTime = DateTime.Now.AddSeconds(-_currentPosition);
-            }
+            _player.Resume();
         }
 
         // Останавливаем воспроизведение
         public void StopPlayback()
         {
-            _isPlaying = false;
-            _currentPosition = 0;
-            _positionTimer?.Dispose();
-            _positionTimer = null;
+            _player.Stop();
         }
 
         // Получаем текущую позицию
         public double GetCurrentPosition()
         {
-            return _currentPosition;
+            return _player.GetCurrentPosition();
+        }
+
+        // Получаем длительность
+        public double GetDuration()
+        {
+            return _player.GetDuration();
+        }
+
+        // Проверяем играет ли
+        public bool IsPlaying()
+        {
+            return _player.IsPlaying;
         }
 
         // Перематываем на указанную позицию
         public void SeekTo(double seconds)
         {
-            _currentPosition = Math.Max(0, Math.Min(seconds, _totalDuration));
-            _playStartTime = DateTime.Now.AddSeconds(-_currentPosition);
+            _player.SeekTo(seconds);
         }
 
         // Удаляем запись
