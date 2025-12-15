@@ -2,6 +2,10 @@ using Plugin.AudioRecorder;
 using System.Text.Json;
 using VoiceRecorder_Petrov.Models;
 
+#if ANDROID
+using Android.Media;
+#endif
+
 namespace VoiceRecorder_Petrov.Services
 {
     // ========================================
@@ -17,6 +21,13 @@ namespace VoiceRecorder_Petrov.Services
         private readonly string _dataFile;          // Файл с информацией (JSON)
         private AudioPlayer? _currentPlayer;        // Плеер для воспроизведения
         private bool _isCurrentlyPlaying = false;   // Флаг воспроизведения
+
+#if ANDROID
+        // На Android используем MediaPlayer - он корректно и сразу останавливается,
+        // в отличие от "killer" хака с AudioPlayer.
+        private MediaPlayer? _androidPlayer;
+        private readonly object _playerLock = new object();
+#endif
 
         // --- КОНСТРУКТОР ---
         
@@ -141,12 +152,31 @@ namespace VoiceRecorder_Petrov.Services
                     // Останавливаем предыдущее воспроизведение
                     StopPlayback();
                     
+#if ANDROID
+                    lock (_playerLock)
+                    {
+                        // На всякий случай стопаем ещё раз внутри lock
+                        StopPlayback();
+
+                        _androidPlayer = new MediaPlayer();
+                        _androidPlayer.SetDataSource(filePath);
+                        _androidPlayer.SetAudioStreamType(Stream.Music);
+
+                        // Когда дошли до конца - чистим ресурсы
+                        _androidPlayer.Completion += (_, __) => StopPlayback();
+
+                        _androidPlayer.Prepare();
+                        _androidPlayer.Start();
+                        _isCurrentlyPlaying = true;
+                    }
+#else
                     // Создаем новый плеер
                     _currentPlayer = new AudioPlayer();
-                    
+
                     // Запускаем воспроизведение
                     _currentPlayer.Play(filePath);
                     _isCurrentlyPlaying = true;
+#endif
                 }
                 else
                 {
@@ -166,20 +196,29 @@ namespace VoiceRecorder_Petrov.Services
             {
                 if (!_isCurrentlyPlaying)
                     return;
-                
-                // Создаем 5 новых плееров подряд
-                // Это гарантирует остановку старого плеера
-                for (int i = 0; i < 5; i++)
+
+#if ANDROID
+                lock (_playerLock)
                 {
                     try
                     {
-                        var killer = new AudioPlayer();
+                        if (_androidPlayer != null)
+                        {
+                            try { _androidPlayer.Stop(); } catch { }
+                            try { _androidPlayer.Reset(); } catch { }
+                            try { _androidPlayer.Release(); } catch { }
+                            _androidPlayer = null;
+                        }
                     }
-                    catch { }
+                    finally
+                    {
+                        _isCurrentlyPlaying = false;
+                    }
                 }
-                
+#else
                 _currentPlayer = null;
                 _isCurrentlyPlaying = false;
+#endif
             }
             catch
             {
