@@ -20,6 +20,7 @@ namespace VoiceRecorder_Petrov
         private bool _isRecording = false;                   // Флаг: идет запись или нет
         private string? _recordingFilePath = null;           // Путь к файлу (сохраняем при старте)
         private Task<string>? _recordingTask = null;         // Задача, которая вернет путь (ждем после Stop)
+        private bool _isBusy = false;                        // Флаг: идет старт/стоп (защита от двойных нажатий)
 
         // --- КОНСТРУКТОР ---
         
@@ -52,6 +53,12 @@ namespace VoiceRecorder_Petrov
         // Обработчик нажатия на кнопку записи
         private async void OnRecordButtonClicked(object sender, EventArgs e)
         {
+            if (_isBusy)
+                return;
+
+            _isBusy = true;
+            RecordButton.IsEnabled = false;
+
             if (_isRecording)
             {
                 // Если запись идет - останавливаем и сохраняем
@@ -62,6 +69,9 @@ namespace VoiceRecorder_Petrov
                 // Если не идет - начинаем новую запись
                 await StartRecording();
             }
+
+            RecordButton.IsEnabled = true;
+            _isBusy = false;
         }
 
         // Начинаем запись с микрофона
@@ -84,10 +94,22 @@ namespace VoiceRecorder_Petrov
                     StopRecordingAfterTimeout = false    // Не останавливать по таймауту
                 };
 
-                // Шаг 3: Запускаем запись и сохраняем задачу (без блокировки UI)
-                // StartRecording() возвращает Task<Task<string>> (внутренняя задача завершится после StopRecording)
-                _recordingTask = _recorder.StartRecording().Unwrap();
-                _recordingFilePath = null; // Сброс пути перед новой записью
+                // Шаг 3: ВАЖНО
+                // Ждем только "старт" (первый await) — так мы точно знаем, что запись реально началась.
+                // Путь (string) придет позже, после StopRecording(), через _recordingTask.
+                _recordingFilePath = null;
+                _recordingTask = null;
+                try
+                {
+                    _recordingTask = await _recorder.StartRecording(); // Task<string> (завершится после Stop)
+                }
+                catch (Exception ex)
+                {
+                    // Если не смогли стартовать запись — НЕ переводим UI в режим "идет запись"
+                    _recorder = null;
+                    await DisplayAlertAsync("Ошибка", $"Не удалось начать запись: {ex.Message}", "OK");
+                    return;
+                }
 
                 // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
@@ -135,36 +157,24 @@ namespace VoiceRecorder_Petrov
                     // Шаг 3: Даем БОЛЬШЕ времени на сохранение (1 секунда)
                     await Task.Delay(1000);
                     
-                    // Шаг 4: Получаем путь (пытаемся дождаться задачи StartRecording)
-                    string? tempFilePath = _recordingFilePath;
+                    // Шаг 4: Получаем путь (самый надежный способ — результат _recordingTask)
+                    string? tempFilePath = null;
+                    if (_recordingTask != null)
+                    {
+                        try { tempFilePath = await _recordingTask; } catch { }
+                    }
                     
-                    if (string.IsNullOrEmpty(tempFilePath) && _recordingTask != null)
-                    {
-                        try
-                        {
-                            tempFilePath = await _recordingTask; // Ждем итоговый путь от плагина
-                        }
-                        catch
-                        {
-                            // Если задача упала - попробуем резервный способ
-                        }
-                    }
-
-                    // Резерв: берем путь напрямую из сервиса
+                    // Резерв 1: сохраненный путь (если был)
                     if (string.IsNullOrEmpty(tempFilePath))
-                    {
-                        tempFilePath = _recorder.GetAudioFilePath();
-                    }
+                        tempFilePath = _recordingFilePath;
 
-                    // Доп. попытки дождаться файла (5 раз по 200 мс)
-                    for (int i = 0; i < 5 && (!string.IsNullOrEmpty(tempFilePath) && !File.Exists(tempFilePath)); i++)
-                    {
-                        await Task.Delay(200);
-                        if (string.IsNullOrEmpty(tempFilePath))
-                        {
-                            tempFilePath = _recorder.GetAudioFilePath();
-                        }
-                    }
+                    // Резерв 2: GetAudioFilePath()
+                    if (string.IsNullOrEmpty(tempFilePath))
+                        tempFilePath = _recorder.GetAudioFilePath();
+
+                    // Даем файлу появиться (8 раз по 250 мс = до 2 секунд)
+                    for (int i = 0; i < 8 && !string.IsNullOrEmpty(tempFilePath) && !File.Exists(tempFilePath); i++)
+                        await Task.Delay(250);
                     
                     // Шаг 5: Проверяем файл
                     if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
@@ -189,8 +199,11 @@ namespace VoiceRecorder_Petrov
                             "OK");
                     }
                     
+                    // Шаг 6: освобождаем рекордер (иначе следующий старт иногда ломается)
                     _recordingFilePath = null;
                     _recordingTask = null;
+                    try { (_recorder as IDisposable)?.Dispose(); } catch { }
+                    _recorder = null;
                 }
 
                 // Шаг 7: Сбрасываем состояние
