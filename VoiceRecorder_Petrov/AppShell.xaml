@@ -6,6 +6,8 @@
     xmlns:local="clr-namespace:VoiceRecorder_Petrov"
     Title="VoiceRecorder_Petrov">
 
+    <!-- Shell не используется как стартовая навигация (см. App.xaml.cs),
+         но оставлен для совместимости со стандартным шаблоном MAUI. -->
     <ShellContent
         Title="Home"
         ContentTemplate="{DataTemplate local:MainPage}"

@@ -239,10 +239,7 @@ namespace VoiceRecorder_Petrov
         }
 
 #if ANDROID
-        // ========================================
-        // ANDROID: СТАБИЛЬНАЯ ЗАПИСЬ ЧЕРЕЗ MediaRecorder
-        // (Plugin.AudioRecorder у тебя возвращал null и "через раз" ломался)
-        // ========================================
+        // Android-запись через MediaRecorder: меньше сюрпризов с путём/созданием файла.
         private bool StartRecordingAndroid()
         {
             try

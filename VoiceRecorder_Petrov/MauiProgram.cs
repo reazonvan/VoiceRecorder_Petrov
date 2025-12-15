@@ -2,6 +2,7 @@
 
 namespace VoiceRecorder_Petrov
 {
+    // Точка входа MAUI: настраивает приложение, шрифты и сервисы (если появятся).
     public static class MauiProgram
     {
         public static MauiApp CreateMauiApp()
