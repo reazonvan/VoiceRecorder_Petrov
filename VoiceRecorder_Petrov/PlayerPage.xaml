@@ -109,22 +109,25 @@
                     <TapGestureRecognizer Tapped="OnPlayPauseClicked"/>
                 </Border.GestureRecognizers>
                 
-                <!-- Иконка Play (видима по умолчанию) -->
-                <Path x:Name="PlayIcon"
-                      Data="M8,5.14V19.14L19,12.14L8,5.14Z"
-                      Fill="White"
-                      Aspect="Uniform"
-                      HeightRequest="32"
-                      WidthRequest="32"/>
-                
-                <!-- Иконка Pause (скрыта по умолчанию) -->
-                <Path x:Name="PauseIcon"
-                      Data="M14,19H18V5H14M6,19H10V5H6V19Z"
-                      Fill="White"
-                      Aspect="Uniform"
-                      HeightRequest="32"
-                      WidthRequest="32"
-                      IsVisible="False"/>
+                <!-- Grid для двух иконок -->
+                <Grid>
+                    <!-- Иконка Play (видима по умолчанию) -->
+                    <Path x:Name="PlayIcon"
+                          Data="M8,5.14V19.14L19,12.14L8,5.14Z"
+                          Fill="White"
+                          Aspect="Uniform"
+                          HeightRequest="32"
+                          WidthRequest="32"/>
+                    
+                    <!-- Иконка Pause (скрыта по умолчанию) -->
+                    <Path x:Name="PauseIcon"
+                          Data="M14,19H18V5H14M6,19H10V5H6V19Z"
+                          Fill="White"
+                          Aspect="Uniform"
+                          HeightRequest="32"
+                          WidthRequest="32"
+                          IsVisible="False"/>
+                </Grid>
             </Border>
 
             <!-- Вперед 10 сек -->
