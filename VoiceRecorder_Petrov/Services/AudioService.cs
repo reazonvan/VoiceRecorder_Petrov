@@ -1,4 +1,3 @@
-using Plugin.AudioRecorder;
 using System.Text.Json;
 using VoiceRecorder_Petrov.Models;
 
@@ -12,9 +11,6 @@ namespace VoiceRecorder_Petrov.Services
         
         // Файл с информацией о записях (JSON)
         private readonly string _dataFile;
-        
-        // Плеер с поддержкой паузы и перемотки
-        private readonly SimpleAudioPlayer _player;
 
         public AudioService()
         {
@@ -29,9 +25,6 @@ namespace VoiceRecorder_Petrov.Services
             {
                 Directory.CreateDirectory(_recordingsFolder);
             }
-            
-            // Создаем плеер
-            _player = new SimpleAudioPlayer();
         }
 
         // Сохраняем новую запись
@@ -99,61 +92,6 @@ namespace VoiceRecorder_Petrov.Services
             {
                 return new List<AudioRecording>();
             }
-        }
-
-        // Воспроизводим запись
-        public async Task PlayRecording(string filePath)
-        {
-            try
-            {
-                await _player.Play(filePath);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Ошибка при воспроизведении: {ex.Message}");
-            }
-        }
-
-        // Ставим на паузу
-        public void PausePlayback()
-        {
-            _player.Pause();
-        }
-
-        // Возобновляем воспроизведение
-        public void ResumePlayback()
-        {
-            _player.Resume();
-        }
-
-        // Останавливаем воспроизведение
-        public void StopPlayback()
-        {
-            _player.Stop();
-        }
-
-        // Получаем текущую позицию
-        public double GetCurrentPosition()
-        {
-            return _player.GetCurrentPosition();
-        }
-
-        // Получаем длительность
-        public double GetDuration()
-        {
-            return _player.GetDuration();
-        }
-
-        // Проверяем играет ли
-        public bool IsPlaying()
-        {
-            return _player.IsPlaying;
-        }
-
-        // Перематываем на указанную позицию
-        public void SeekTo(double seconds)
-        {
-            _player.SeekTo(seconds);
         }
 
         // Удаляем запись

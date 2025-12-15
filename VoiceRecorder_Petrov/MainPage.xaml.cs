@@ -168,10 +168,14 @@ namespace VoiceRecorder_Petrov
                 var tappedEventArgs = e as TappedEventArgs;
                 var recording = tappedEventArgs?.Parameter as AudioRecording;
                 
-                if (recording != null)
+                if (recording != null && File.Exists(recording.FilePath))
                 {
                     // Открываем страницу плеера
                     await Navigation.PushAsync(new PlayerPage(recording, _audioService));
+                }
+                else
+                {
+                    await DisplayAlertAsync("Ошибка", "Файл записи не найден", "OK");
                 }
             }
             catch (Exception ex)

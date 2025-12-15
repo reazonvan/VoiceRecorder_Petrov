@@ -1,60 +1,79 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="VoiceRecorder_Petrov.PlayerPage"
              Title="Плеер"
              BackgroundColor="#F5F5F5">
 
-    <Grid RowDefinitions="*,Auto" Padding="20">
+    <Grid RowDefinitions="Auto,*,Auto" Padding="20">
         
-        <!-- Основная область -->
-        <VerticalStackLayout Grid.Row="0" 
+        <!-- Заголовок -->
+        <VerticalStackLayout Grid.Row="0" Spacing="10" Margin="0,20,0,30">
+            <Label x:Name="TitleLabel"
+                   Text="Название записи"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="#333333"/>
+            
+            <Label x:Name="InfoLabel"
+                   Text="Дата и размер"
+                   FontSize="14"
+                   HorizontalOptions="Center"
+                   TextColor="#666666"/>
+        </VerticalStackLayout>
+
+        <!-- MediaElement - главный элемент для воспроизведения -->
+        <!-- Делаем его невидимым, но он работает -->
+        <toolkit:MediaElement x:Name="AudioPlayer"
+                              Grid.Row="1"
+                              ShouldAutoPlay="True"
+                              ShouldShowPlaybackControls="False"
+                              HeightRequest="0"
+                              IsVisible="False"
+                              PositionChanged="OnPositionChanged"
+                              MediaEnded="OnMediaEnded"/>
+
+        <!-- UI плеера -->
+        <VerticalStackLayout Grid.Row="1" 
                              VerticalOptions="Center"
                              Spacing="30">
             
-            <!-- Иконка записи -->
-            <Border WidthRequest="120"
-                    HeightRequest="120"
+            <!-- Иконка -->
+            <Border WidthRequest="100"
+                    HeightRequest="100"
                     BackgroundColor="#007AFF"
                     HorizontalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="60"/>
+                    <RoundRectangle CornerRadius="50"/>
                 </Border.StrokeShape>
                 
                 <Path Data="M12,3V13.55C11.41,13.21 10.73,13 10,13A4,4 0 0,0 6,17A4,4 0 0,0 10,21A4,4 0 0,0 14,17V7H18V3H12Z"
                       Fill="White"
                       Aspect="Uniform"
-                      HeightRequest="50"
-                      WidthRequest="50"/>
+                      HeightRequest="40"
+                      WidthRequest="40"/>
             </Border>
-
-            <!-- Название записи -->
-            <Label x:Name="TitleLabel"
-                   Text="Название записи"
-                   FontSize="20"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   TextColor="#333333"
-                   HorizontalTextAlignment="Center"/>
 
             <!-- Прогресс бар -->
             <ProgressBar x:Name="ProgressBar"
                          Progress="0"
                          ProgressColor="#007AFF"
-                         HeightRequest="4"/>
+                         HeightRequest="6"/>
 
-            <!-- Время -->
+            <!-- Время воспроизведения -->
             <Grid ColumnDefinitions="*,*">
                 <Label x:Name="CurrentTimeLabel"
                        Text="00:00"
-                       FontSize="14"
+                       FontSize="16"
                        TextColor="#666666"
                        HorizontalOptions="Start"/>
                 
                 <Label x:Name="TotalTimeLabel"
                        Grid.Column="1"
                        Text="00:00"
-                       FontSize="14"
+                       FontSize="16"
                        TextColor="#666666"
                        HorizontalOptions="End"/>
             </Grid>
@@ -67,87 +86,46 @@
                     MinimumTrackColor="#007AFF"
                     MaximumTrackColor="#DDDDDD"
                     ThumbColor="#007AFF"
-                    ValueChanged="OnSeekSliderValueChanged"/>
+                    DragCompleted="OnSeekDragCompleted"/>
 
         </VerticalStackLayout>
 
         <!-- Кнопки управления -->
-        <HorizontalStackLayout Grid.Row="1"
-                               Spacing="20"
+        <HorizontalStackLayout Grid.Row="2"
+                               Spacing="15"
                                HorizontalOptions="Center"
-                               Margin="0,0,0,40">
+                               Margin="0,0,0,30">
 
-            <!-- Назад 10 сек -->
-            <Border WidthRequest="60"
+            <!-- Назад 10 секунд -->
+            <Button Text="⏮ 10"
+                    FontSize="16"
+                    WidthRequest="70"
                     HeightRequest="60"
                     BackgroundColor="#E8E8E8"
-                    Stroke="Transparent">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="30"/>
-                </Border.StrokeShape>
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnBackwardClicked"/>
-                </Border.GestureRecognizers>
-                
-                <Path Data="M12.5,3C17.15,3 21.08,6.03 22.47,10.22L20.1,11C19.05,7.81 16.04,5.5 12.5,5.5C10.54,5.5 8.77,6.22 7.38,7.38L10,10H3V3L5.6,5.6C7.45,4 9.85,3 12.5,3M10,12V22H8V14H6V12H10M18,14V20C18,21.11 17.11,22 16,22H14A2,2 0 0,1 12,20V14A2,2 0 0,1 14,12H16C17.11,12 18,12.9 18,14M14,14V20H16V14H14Z"
-                      Fill="#333333"
-                      Aspect="Uniform"
-                      HeightRequest="28"
-                      WidthRequest="28"/>
-            </Border>
+                    TextColor="#333333"
+                    CornerRadius="30"
+                    Clicked="OnBackwardClicked"/>
 
             <!-- Пауза/Плей -->
-            <Border x:Name="PlayPauseButton"
-                    WidthRequest="80"
-                    HeightRequest="80"
+            <Button x:Name="PlayPauseButton"
+                    Text="⏸"
+                    FontSize="32"
+                    WidthRequest="90"
+                    HeightRequest="90"
                     BackgroundColor="#007AFF"
-                    Stroke="Transparent">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="40"/>
-                </Border.StrokeShape>
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnPlayPauseClicked"/>
-                </Border.GestureRecognizers>
-                
-                <!-- Grid для двух иконок -->
-                <Grid>
-                    <!-- Иконка Play (видима по умолчанию) -->
-                    <Path x:Name="PlayIcon"
-                          Data="M8,5.14V19.14L19,12.14L8,5.14Z"
-                          Fill="White"
-                          Aspect="Uniform"
-                          HeightRequest="32"
-                          WidthRequest="32"/>
-                    
-                    <!-- Иконка Pause (скрыта по умолчанию) -->
-                    <Path x:Name="PauseIcon"
-                          Data="M14,19H18V5H14M6,19H10V5H6V19Z"
-                          Fill="White"
-                          Aspect="Uniform"
-                          HeightRequest="32"
-                          WidthRequest="32"
-                          IsVisible="False"/>
-                </Grid>
-            </Border>
+                    TextColor="White"
+                    CornerRadius="45"
+                    Clicked="OnPlayPauseClicked"/>
 
-            <!-- Вперед 10 сек -->
-            <Border WidthRequest="60"
+            <!-- Вперед 10 секунд -->
+            <Button Text="10 ⏭"
+                    FontSize="16"
+                    WidthRequest="70"
                     HeightRequest="60"
                     BackgroundColor="#E8E8E8"
-                    Stroke="Transparent">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="30"/>
-                </Border.StrokeShape>
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnForwardClicked"/>
-                </Border.GestureRecognizers>
-                
-                <Path Data="M11.5,3C6.85,3 2.92,6.03 1.53,10.22L3.9,11C4.95,7.81 7.96,5.5 11.5,5.5C13.46,5.5 15.23,6.22 16.62,7.38L14,10H21V3L18.4,5.6C16.55,4 14.15,3 11.5,3M6,14V20C6,21.11 6.9,22 8,22H10A2,2 0 0,0 12,20V14A2,2 0 0,0 10,12H8C6.9,12 6,12.9 6,14M8,14H10V20H8V14M14,12V22H16V14H18V12H14Z"
-                      Fill="#333333"
-                      Aspect="Uniform"
-                      HeightRequest="28"
-                      WidthRequest="28"/>
-            </Border>
+                    TextColor="#333333"
+                    CornerRadius="30"
+                    Clicked="OnForwardClicked"/>
 
         </HorizontalStackLayout>
 
