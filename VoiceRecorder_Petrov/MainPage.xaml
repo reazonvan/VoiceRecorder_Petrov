@@ -101,46 +101,28 @@
                                 </VerticalStackLayout>
 
                                 <!-- Кнопка воспроизведения -->
-                                <Border Grid.Column="1"
+                                <Button Grid.Column="1"
+                                        Text="▶"
+                                        FontSize="18"
                                         WidthRequest="50"
                                         HeightRequest="50"
                                         BackgroundColor="#007AFF"
-                                        StrokeThickness="0">
-                                    <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="25"/>
-                                    </Border.StrokeShape>
-                                    <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Tapped="OnPlayButtonClicked"
-                                                              CommandParameter="{Binding .}"/>
-                                    </Border.GestureRecognizers>
-                                    
-                                    <Path Data="M8,5.14V19.14L19,12.14L8,5.14Z"
-                                          Fill="White"
-                                          Aspect="Uniform"
-                                          HeightRequest="20"
-                                          WidthRequest="20"/>
-                                </Border>
+                                        TextColor="White"
+                                        CornerRadius="25"
+                                        Clicked="OnPlayButtonClicked"
+                                        CommandParameter="{Binding .}"/>
 
                                 <!-- Кнопка удаления -->
-                                <Border Grid.Column="2"
+                                <Button Grid.Column="2"
+                                        Text="✖"
+                                        FontSize="18"
                                         WidthRequest="50"
                                         HeightRequest="50"
                                         BackgroundColor="#FF3B30"
-                                        StrokeThickness="0">
-                                    <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="25"/>
-                                    </Border.StrokeShape>
-                                    <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Tapped="OnDeleteButtonClicked"
-                                                              CommandParameter="{Binding .}"/>
-                                    </Border.GestureRecognizers>
-                                    
-                                    <Path Data="M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19M8,9H16V19H8V9M15.5,4L14.5,3H9.5L8.5,4H5V6H19V4H15.5Z"
-                                          Fill="White"
-                                          Aspect="Uniform"
-                                          HeightRequest="22"
-                                          WidthRequest="22"/>
-                                </Border>
+                                        TextColor="White"
+                                        CornerRadius="25"
+                                        Clicked="OnDeleteButtonClicked"
+                                        CommandParameter="{Binding .}"/>
                             </Grid>
                         </Border>
                     </DataTemplate>

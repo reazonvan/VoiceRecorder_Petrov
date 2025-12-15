@@ -165,12 +165,8 @@ namespace VoiceRecorder_Petrov
             try
             {
                 // Получаем запись из CommandParameter
-                AudioRecording? recording = null;
-                
-                if (sender is TapGestureRecognizer tap)
-                {
-                    recording = tap.CommandParameter as AudioRecording;
-                }
+                var button = sender as Button;
+                var recording = button?.CommandParameter as AudioRecording;
                 
                 if (recording != null)
                 {
@@ -191,12 +187,8 @@ namespace VoiceRecorder_Petrov
             try
             {
                 // Получаем запись из CommandParameter
-                AudioRecording? recording = null;
-                
-                if (sender is TapGestureRecognizer tap)
-                {
-                    recording = tap.CommandParameter as AudioRecording;
-                }
+                var button = sender as Button;
+                var recording = button?.CommandParameter as AudioRecording;
                 
                 if (recording != null)
                 {
