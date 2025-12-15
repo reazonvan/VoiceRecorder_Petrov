@@ -34,13 +34,13 @@ namespace VoiceRecorder_Petrov.Services
 
         public AudioService()
         {
-            // Путь к папке с записями (в данных приложения)
+            // AppDataDirectory — “песочница” приложения: можно хранить записи без внешних разрешений.
             _recordingsFolder = Path.Combine(FileSystem.AppDataDirectory, "Recordings");
             
-            // Путь к JSON файлу с метаданными
+            // В JSON храним “каталог” записей (название/дата/длительность/путь к файлу).
             _dataFile = Path.Combine(FileSystem.AppDataDirectory, "recordings.json");
             
-            // Создаем папку если её нет
+            // Папка создаётся при первом запуске.
             if (!Directory.Exists(_recordingsFolder))
             {
                 Directory.CreateDirectory(_recordingsFolder);
@@ -55,13 +55,15 @@ namespace VoiceRecorder_Petrov.Services
         {
             try
             {
+                // Общая идея: файл кладём в папку приложения, а метаданные обновляем в JSON.
                 var recordings = await LoadRecordingsFromFile();
                 
-                // Лимит: 100 записей. Если переполнено — удаляем самую старую.
+                // Ограничение по количеству, чтобы папка со временем не разрасталась.
                 if (recordings.Count >= 100)
                 {
                     var oldestRecording = recordings.OrderBy(r => r.CreatedDate).First();
                     
+                    // Удаляем и файл, и запись из списка.
                     if (File.Exists(oldestRecording.FilePath))
                     {
                         File.Delete(oldestRecording.FilePath);
@@ -75,13 +77,16 @@ namespace VoiceRecorder_Petrov.Services
                 if (string.IsNullOrWhiteSpace(ext))
                     ext = ".wav";
 
+                // Делаем “читаемое” имя с датой/временем.
                 var fileName = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
                 var newFilePath = Path.Combine(_recordingsFolder, fileName);
 
+                // Переносим временный файл в постоянное место.
                 File.Copy(tempFilePath, newFilePath, true);
                 
                 var fileInfo = new FileInfo(newFilePath);
 
+                // Метаданные нужны для списка на главной странице.
                 var recording = new AudioRecording
                 {
                     Title = $"Запись от {DateTime.Now:dd.MM.yyyy HH:mm}",
@@ -93,6 +98,7 @@ namespace VoiceRecorder_Petrov.Services
                 
                 recordings.Add(recording);
                 
+                // Записываем обновлённый каталог обратно в JSON.
                 await SaveRecordingsToFile(recordings);
             }
             catch (Exception ex)
@@ -140,7 +146,7 @@ namespace VoiceRecorder_Petrov.Services
             {
                 if (File.Exists(filePath))
                 {
-                    // Останавливаем предыдущее воспроизведение
+                    // Не даём двум записям играть одновременно.
                     StopPlayback();
                     
 #if ANDROID
@@ -170,7 +176,7 @@ namespace VoiceRecorder_Petrov.Services
                         IsCurrentlyPlaying = true;
                     }
 #else
-                    // Создаем новый плеер
+                    // Для не-Android используем плеер из плагина.
                     _currentPlayer = new AudioPlayer();
 
                     // Запускаем воспроизведение
@@ -189,7 +195,7 @@ namespace VoiceRecorder_Petrov.Services
             }
         }
 
-        // Останавливаем воспроизведение (создаем несколько плееров для гарантии)
+        // Останавливаем воспроизведение и освобождаем ресурсы.
         public void StopPlayback()
         {
             try
@@ -201,6 +207,7 @@ namespace VoiceRecorder_Petrov.Services
                     {
                         if (_androidPlayer != null)
                         {
+                            // На Android важно вызвать Release(), иначе плеер может “держать” аудиофокус.
                             try { _androidPlayer.Stop(); } catch { }
                             try { _androidPlayer.Reset(); } catch { }
                             try { _androidPlayer.Release(); } catch { }
