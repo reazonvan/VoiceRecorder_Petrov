@@ -1,6 +1,7 @@
 ﻿using Plugin.AudioRecorder;
 using VoiceRecorder_Petrov.Models;
 using VoiceRecorder_Petrov.Services;
+using System.Threading.Tasks;
 
 namespace VoiceRecorder_Petrov
 {
@@ -18,6 +19,7 @@ namespace VoiceRecorder_Petrov
         private int _seconds = 0;                            // Счетчик секунд записи
         private bool _isRecording = false;                   // Флаг: идет запись или нет
         private string? _recordingFilePath = null;           // Путь к файлу (сохраняем при старте)
+        private Task<string>? _recordingTask = null;         // Задача, которая вернет путь (ждем после Stop)
 
         // --- КОНСТРУКТОР ---
         
@@ -82,18 +84,10 @@ namespace VoiceRecorder_Petrov
                     StopRecordingAfterTimeout = false    // Не останавливать по таймауту
                 };
 
-                // Шаг 3: Начинаем запись с ПРАВИЛЬНЫМ двойным await
-                // StartRecording() возвращает Task<Task<string>>
-                try
-                {
-                    var startTask = _recorder.StartRecording();      // Запускаем
-                    var filePathTask = await startTask;              // Первый await - получаем Task<string>
-                    _recordingFilePath = await filePathTask;         // Второй await - получаем string (путь)
-                }
-                catch
-                {
-                    // Если ошибка - продолжаем без пути (будем использовать GetAudioFilePath)
-                }
+                // Шаг 3: Запускаем запись и сохраняем задачу (без блокировки UI)
+                // StartRecording() возвращает Task<Task<string>> (внутренняя задача завершится после StopRecording)
+                _recordingTask = _recorder.StartRecording().Unwrap();
+                _recordingFilePath = null; // Сброс пути перед новой записью
 
                 // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
@@ -141,8 +135,26 @@ namespace VoiceRecorder_Petrov
                     // Шаг 3: Даем БОЛЬШЕ времени на сохранение (1 секунда)
                     await Task.Delay(1000);
                     
-                    // Шаг 4: Получаем путь (сначала пробуем сохраненный, потом GetAudioFilePath)
-                    var tempFilePath = _recordingFilePath ?? _recorder.GetAudioFilePath();
+                    // Шаг 4: Получаем путь (пытаемся дождаться задачи StartRecording)
+                    string? tempFilePath = _recordingFilePath;
+                    
+                    if (string.IsNullOrEmpty(tempFilePath) && _recordingTask != null)
+                    {
+                        try
+                        {
+                            tempFilePath = await _recordingTask; // Ждем итоговый путь от плагина
+                        }
+                        catch
+                        {
+                            // Если задача упала - попробуем резервный способ
+                        }
+                    }
+
+                    // Резерв: берем путь напрямую из сервиса
+                    if (string.IsNullOrEmpty(tempFilePath))
+                    {
+                        tempFilePath = _recorder.GetAudioFilePath();
+                    }
                     
                     // Шаг 5: Проверяем файл
                     if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
@@ -155,14 +167,20 @@ namespace VoiceRecorder_Petrov
                     else
                     {
                         // Показываем отладочную информацию
+                        var taskInfo = _recordingTask == null
+                            ? "(нет задачи)"
+                            : (_recordingTask.IsCompleted ? (_recordingTask.Result ?? "null") : "(не выполнена)");
+
                         await DisplayAlertAsync("Отладка", 
                             $"recordingFilePath: {_recordingFilePath ?? "null"}\n" +
                             $"GetAudioFilePath: {_recorder.GetAudioFilePath() ?? "null"}\n" +
+                            $"Task result: {taskInfo}\n" +
                             $"Секунд: {_seconds}", 
                             "OK");
                     }
                     
                     _recordingFilePath = null;
+                    _recordingTask = null;
                 }
 
                 // Шаг 7: Сбрасываем состояние
