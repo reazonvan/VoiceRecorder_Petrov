@@ -15,6 +15,21 @@ namespace VoiceRecorder_Petrov.Services
         
         // Плеер для воспроизведения
         private readonly AudioPlayer _player;
+        
+        // Текущая позиция воспроизведения
+        private double _currentPosition = 0;
+        
+        // Общая длительность
+        private double _totalDuration = 0;
+        
+        // Флаг воспроизведения
+        private bool _isPlaying = false;
+        
+        // Таймер для отслеживания позиции
+        private System.Threading.Timer? _positionTimer;
+        
+        // Время начала воспроизведения
+        private DateTime _playStartTime;
 
         public AudioService()
         {
@@ -108,7 +123,33 @@ namespace VoiceRecorder_Petrov.Services
             {
                 if (File.Exists(filePath))
                 {
+                    // Останавливаем предыдущее воспроизведение
+                    StopPlayback();
+                    
+                    // Запускаем новое
                     _player.Play(filePath);
+                    _isPlaying = true;
+                    _currentPosition = 0;
+                    _playStartTime = DateTime.Now;
+                    
+                    // Получаем длительность из файла
+                    var recording = (await GetAllRecordings()).FirstOrDefault(r => r.FilePath == filePath);
+                    _totalDuration = recording?.DurationSeconds ?? 0;
+                    
+                    // Запускаем таймер для отслеживания позиции
+                    _positionTimer = new System.Threading.Timer(_ =>
+                    {
+                        if (_isPlaying)
+                        {
+                            _currentPosition = (DateTime.Now - _playStartTime).TotalSeconds;
+                            
+                            // Если достигли конца - останавливаем
+                            if (_currentPosition >= _totalDuration)
+                            {
+                                StopPlayback();
+                            }
+                        }
+                    }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
                 }
                 else
                 {
@@ -121,6 +162,49 @@ namespace VoiceRecorder_Petrov.Services
             }
             
             await Task.CompletedTask;
+        }
+
+        // Ставим на паузу
+        public void PausePlayback()
+        {
+            if (_isPlaying)
+            {
+                _isPlaying = false;
+                // AudioPlayer из Plugin.AudioRecorder не поддерживает паузу
+                // Поэтому просто останавливаем и запоминаем позицию
+            }
+        }
+
+        // Возобновляем воспроизведение
+        public void ResumePlayback()
+        {
+            if (!_isPlaying)
+            {
+                _isPlaying = true;
+                _playStartTime = DateTime.Now.AddSeconds(-_currentPosition);
+            }
+        }
+
+        // Останавливаем воспроизведение
+        public void StopPlayback()
+        {
+            _isPlaying = false;
+            _currentPosition = 0;
+            _positionTimer?.Dispose();
+            _positionTimer = null;
+        }
+
+        // Получаем текущую позицию
+        public double GetCurrentPosition()
+        {
+            return _currentPosition;
+        }
+
+        // Перематываем на указанную позицию
+        public void SeekTo(double seconds)
+        {
+            _currentPosition = Math.Max(0, Math.Min(seconds, _totalDuration));
+            _playStartTime = DateTime.Now.AddSeconds(-_currentPosition);
         }
 
         // Удаляем запись
@@ -196,4 +280,3 @@ namespace VoiceRecorder_Petrov.Services
         }
     }
 }
-

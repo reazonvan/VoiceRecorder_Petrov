@@ -164,15 +164,14 @@ namespace VoiceRecorder_Petrov
         {
             try
             {
-                // Получаем запись из CommandParameter
-                var button = sender as Button;
-                var recording = button?.CommandParameter as AudioRecording;
+                // Получаем параметр из TapGestureRecognizer
+                var tappedEventArgs = e as TappedEventArgs;
+                var recording = tappedEventArgs?.Parameter as AudioRecording;
                 
                 if (recording != null)
                 {
                     // Открываем страницу плеера
-                    var playerPage = new PlayerPage(recording);
-                    await Navigation.PushModalAsync(playerPage);
+                    await Navigation.PushAsync(new PlayerPage(recording, _audioService));
                 }
             }
             catch (Exception ex)
@@ -186,9 +185,9 @@ namespace VoiceRecorder_Petrov
         {
             try
             {
-                // Получаем запись из CommandParameter
-                var button = sender as Button;
-                var recording = button?.CommandParameter as AudioRecording;
+                // Получаем параметр из TapGestureRecognizer
+                var tappedEventArgs = e as TappedEventArgs;
+                var recording = tappedEventArgs?.Parameter as AudioRecording;
                 
                 if (recording != null)
                 {

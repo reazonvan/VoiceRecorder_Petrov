@@ -3,123 +3,173 @@ using VoiceRecorder_Petrov.Services;
 
 namespace VoiceRecorder_Petrov
 {
-    // Страница плеера для воспроизведения записи
+    // Страница плеера для воспроизведения записей
     public partial class PlayerPage : ContentPage
     {
         private readonly AudioRecording _recording;
-        private readonly SimpleAudioPlayer _player;
-        private bool _isDragging = false;
+        private readonly AudioService _audioService;
+        private System.Threading.Timer? _timer;
         private bool _isPlaying = false;
+        private bool _isUserSeeking = false;
 
-        public PlayerPage(AudioRecording recording)
+        public PlayerPage(AudioRecording recording, AudioService audioService)
         {
             InitializeComponent();
             
             _recording = recording;
-            _player = new SimpleAudioPlayer();
-            
-            // Загружаем аудио файл
-            _player.Load(_recording.FilePath, _recording.DurationSeconds);
-            
-            // Подписываемся на события
-            _player.PositionChanged += OnPlayerPositionChanged;
-            _player.PlaybackEnded += OnPlayerPlaybackEnded;
+            _audioService = audioService;
             
             // Устанавливаем информацию о записи
-            TitleLabel.Text = _recording.Title;
-            DateLabel.Text = _recording.FormattedDate;
-            TotalTimeLabel.Text = _recording.FormattedDuration;
-            PositionSlider.Maximum = _recording.DurationSeconds;
-            CurrentTimeLabel.Text = "00:00";
+            TitleLabel.Text = recording.Title;
+            TotalTimeLabel.Text = recording.FormattedDuration;
+            SeekSlider.Maximum = recording.DurationSeconds;
+            
+            // Автоматически начинаем воспроизведение
+            StartPlayback();
         }
 
-        // Обновление позиции от плеера
-        private void OnPlayerPositionChanged(object? sender, double position)
+        // Начинаем воспроизведение
+        private async void StartPlayback()
         {
-            if (!_isDragging)
+            try
             {
-                MainThread.BeginInvokeOnMainThread(() =>
+                await _audioService.PlayRecording(_recording.FilePath);
+                _isPlaying = true;
+                
+                // Показываем иконку паузы
+                PlayIcon.IsVisible = false;
+                PauseIcon.IsVisible = true;
+                
+                // Запускаем таймер для обновления прогресса
+                _timer = new System.Threading.Timer(_ =>
                 {
-                    PositionSlider.Value = position;
-                    
-                    var minutes = (int)position / 60;
-                    var seconds = (int)position % 60;
-                    CurrentTimeLabel.Text = $"{minutes:00}:{seconds:00}";
-                });
+                    UpdateProgress();
+                }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlertAsync("Ошибка", $"Не удалось воспроизвести: {ex.Message}", "OK");
             }
         }
 
-        // Окончание воспроизведения
-        private void OnPlayerPlaybackEnded(object? sender, EventArgs e)
+        // Обновляем прогресс
+        private void UpdateProgress()
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                _isPlaying = false;
-                PlayIcon.IsVisible = true;
-                PauseIcon.IsVisible = false;
-                PositionSlider.Value = 0;
-                CurrentTimeLabel.Text = "00:00";
+                if (_isUserSeeking) return;
+                
+                // Получаем текущую позицию из сервиса
+                var currentPosition = _audioService.GetCurrentPosition();
+                
+                // Обновляем UI
+                CurrentTimeLabel.Text = FormatTime(currentPosition);
+                SeekSlider.Value = currentPosition;
+                ProgressBar.Progress = currentPosition / _recording.DurationSeconds;
+                
+                // Если воспроизведение завершено
+                if (currentPosition >= _recording.DurationSeconds && _isPlaying)
+                {
+                    StopPlayback();
+                }
             });
         }
 
-        // Воспроизведение/Пауза
-        private void OnPlayPauseTapped(object sender, EventArgs e)
+        // Форматируем время в MM:SS
+        private string FormatTime(double totalSeconds)
+        {
+            var minutes = (int)totalSeconds / 60;
+            var seconds = (int)totalSeconds % 60;
+            return $"{minutes:00}:{seconds:00}";
+        }
+
+        // Нажатие на кнопку Пауза/Плей
+        private void OnPlayPauseClicked(object sender, EventArgs e)
         {
             if (_isPlaying)
             {
-                // Пауза (мгновенно!)
-                _player.Pause();
+                // Ставим на паузу
+                _audioService.PausePlayback();
                 _isPlaying = false;
+                
+                // Показываем иконку плей
                 PlayIcon.IsVisible = true;
                 PauseIcon.IsVisible = false;
             }
             else
             {
-                // Воспроизведение
-                _player.Play();
+                // Возобновляем
+                _audioService.ResumePlayback();
                 _isPlaying = true;
+                
+                // Показываем иконку паузы
                 PlayIcon.IsVisible = false;
                 PauseIcon.IsVisible = true;
             }
         }
 
-        // Начало перетаскивания ползунка
-        private void OnSliderDragStarted(object sender, EventArgs e)
+        // Перемотка назад на 10 секунд
+        private void OnBackwardClicked(object sender, EventArgs e)
         {
-            _isDragging = true;
+            var newPosition = Math.Max(0, SeekSlider.Value - 10);
+            SeekSlider.Value = newPosition;
+            _audioService.SeekTo(newPosition);
         }
 
-        // Конец перетаскивания ползунка
-        private void OnSliderDragCompleted(object sender, EventArgs e)
+        // Перемотка вперед на 10 секунд
+        private void OnForwardClicked(object sender, EventArgs e)
         {
-            _isDragging = false;
-            
-            // Перематываем на выбранную позицию
-            _player.SeekTo(PositionSlider.Value);
-            
-            // Обновляем время
-            var currentSeconds = (int)PositionSlider.Value;
-            var minutes = currentSeconds / 60;
-            var seconds = currentSeconds % 60;
-            CurrentTimeLabel.Text = $"{minutes:00}:{seconds:00}";
+            var newPosition = Math.Min(_recording.DurationSeconds, SeekSlider.Value + 10);
+            SeekSlider.Value = newPosition;
+            _audioService.SeekTo(newPosition);
         }
 
-        // Закрытие плеера
-        private async void OnCloseClicked(object sender, EventArgs e)
+        // Пользователь двигает слайдер
+        private void OnSeekSliderValueChanged(object sender, ValueChangedEventArgs e)
         {
-            // Останавливаем воспроизведение
-            _player.Stop();
+            // Если слайдер двигается программно - игнорируем
+            if (Math.Abs(e.NewValue - _audioService.GetCurrentPosition()) < 1)
+                return;
             
-            // Закрываем страницу
-            await Navigation.PopModalAsync();
+            // Пользователь перематывает вручную
+            _isUserSeeking = true;
+            _audioService.SeekTo(e.NewValue);
+            
+            // Через небольшую задержку снова включаем автообновление
+            Task.Delay(500).ContinueWith(_ =>
+            {
+                _isUserSeeking = false;
+            });
         }
 
-        // Очистка при закрытии
+        // Остановка воспроизведения
+        private void StopPlayback()
+        {
+            _isPlaying = false;
+            _audioService.StopPlayback();
+            
+            // Показываем иконку плей
+            PlayIcon.IsVisible = true;
+            PauseIcon.IsVisible = false;
+            
+            // Сбрасываем позицию
+            SeekSlider.Value = 0;
+            CurrentTimeLabel.Text = "00:00";
+            ProgressBar.Progress = 0;
+        }
+
+        // Очистка при закрытии страницы
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
             
-            _player.Dispose();
+            // Останавливаем таймер
+            _timer?.Dispose();
+            _timer = null;
+            
+            // Останавливаем воспроизведение
+            _audioService.StopPlayback();
         }
     }
 }
+
