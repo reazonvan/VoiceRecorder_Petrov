@@ -178,23 +178,43 @@ namespace VoiceRecorder_Petrov
                     // Останавливаем запись
                     await _recorder.StopRecording();
                     
+                    // Даем время на сохранение файла
+                    await Task.Delay(300);
+                    
                     // Получаем путь к временному файлу
                     var tempFilePath = _recorder.GetAudioFilePath();
                     
-                    if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
+                    // Проверяем что файл существует
+                    if (!string.IsNullOrEmpty(tempFilePath))
                     {
-                        // Сохраняем запись через сервис
-                        await _audioService.SaveRecording(tempFilePath, _seconds);
+                        // Если файл еще не создан - ждем еще немного
+                        int attempts = 0;
+                        while (!File.Exists(tempFilePath) && attempts < 10)
+                        {
+                            await Task.Delay(200);
+                            attempts++;
+                        }
                         
-                        // Показываем сообщение
-                        await DisplayAlertAsync("Успех", "Запись сохранена!", "OK");
-                        
-                        // Обновляем список
-                        LoadRecordings();
+                        if (File.Exists(tempFilePath))
+                        {
+                            // Файл найден - сохраняем
+                            await _audioService.SaveRecording(tempFilePath, _seconds);
+                            
+                            // Показываем сообщение
+                            await DisplayAlertAsync("Успех", "Запись сохранена!", "OK");
+                            
+                            // Обновляем список
+                            LoadRecordings();
+                        }
+                        else
+                        {
+                            // Файл так и не появился
+                            await DisplayAlertAsync("Ошибка", "Запись слишком короткая или файл не создан", "OK");
+                        }
                     }
                     else
                     {
-                        await DisplayAlertAsync("Ошибка", "Файл записи не найден", "OK");
+                        await DisplayAlertAsync("Ошибка", "Не удалось получить путь к файлу", "OK");
                     }
                 }
 
@@ -212,6 +232,14 @@ namespace VoiceRecorder_Petrov
             catch (Exception ex)
             {
                 await DisplayAlertAsync("Ошибка", $"Не удалось остановить запись: {ex.Message}", "OK");
+                
+                // Все равно сбрасываем состояние
+                _isRecording = false;
+                _isPaused = false;
+                RecordButton.Text = "Начать запись";
+                RecordButton.BackgroundColor = Color.FromArgb("#007AFF");
+                StatusLabel.Text = "Готово к записи";
+                FinishButton.IsVisible = false;
             }
         }
 
