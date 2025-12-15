@@ -164,18 +164,24 @@ namespace VoiceRecorder_Petrov
         {
             try
             {
-                var button = sender as Button;
-                var recording = button?.CommandParameter as AudioRecording;
+                // Получаем запись из CommandParameter
+                AudioRecording? recording = null;
+                
+                if (sender is TapGestureRecognizer tap)
+                {
+                    recording = tap.CommandParameter as AudioRecording;
+                }
                 
                 if (recording != null)
                 {
-                    await _audioService.PlayRecording(recording.FilePath);
-                    await DisplayAlertAsync("Воспроизведение", $"Воспроизводится: {recording.Title}", "OK");
+                    // Открываем страницу плеера
+                    var playerPage = new PlayerPage(recording);
+                    await Navigation.PushModalAsync(playerPage);
                 }
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync("Ошибка", $"Не удалось воспроизвести: {ex.Message}", "OK");
+                await DisplayAlertAsync("Ошибка", $"Не удалось открыть плеер: {ex.Message}", "OK");
             }
         }
 
@@ -184,8 +190,13 @@ namespace VoiceRecorder_Petrov
         {
             try
             {
-                var button = sender as Button;
-                var recording = button?.CommandParameter as AudioRecording;
+                // Получаем запись из CommandParameter
+                AudioRecording? recording = null;
+                
+                if (sender is TapGestureRecognizer tap)
+                {
+                    recording = tap.CommandParameter as AudioRecording;
+                }
                 
                 if (recording != null)
                 {

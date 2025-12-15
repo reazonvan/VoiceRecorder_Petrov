@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VoiceRecorder_Petrov.PlayerPage"
+             Title="Воспроизведение"
+             BackgroundColor="#F5F5F5">
+
+    <Grid RowDefinitions="*,Auto,Auto,Auto,*" Padding="20">
+
+        <!-- Название записи -->
+        <VerticalStackLayout Grid.Row="1" 
+                             Spacing="10"
+                             HorizontalOptions="Center">
+            <Label x:Name="TitleLabel" 
+                   Text="Запись" 
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="#333333"/>
+            
+            <Label x:Name="DateLabel" 
+                   Text="Дата" 
+                   FontSize="14"
+                   HorizontalOptions="Center"
+                   TextColor="#666666"/>
+        </VerticalStackLayout>
+
+        <!-- Прогресс бар -->
+        <VerticalStackLayout Grid.Row="2" 
+                             Spacing="10"
+                             Margin="0,30,0,20">
+            
+            <!-- Слайдер для перемотки -->
+            <Slider x:Name="PositionSlider"
+                    Minimum="0"
+                    Maximum="100"
+                    Value="0"
+                    MinimumTrackColor="#007AFF"
+                    MaximumTrackColor="#DDDDDD"
+                    ThumbColor="#007AFF"
+                    ValueChanged="OnPositionChanged"/>
+            
+            <!-- Время -->
+            <Grid ColumnDefinitions="*,*">
+                <Label x:Name="CurrentTimeLabel" 
+                       Text="00:00" 
+                       FontSize="14"
+                       HorizontalOptions="Start"
+                       TextColor="#666666"/>
+                
+                <Label x:Name="TotalTimeLabel" 
+                       Text="00:00" 
+                       FontSize="14"
+                       Grid.Column="1"
+                       HorizontalOptions="End"
+                       TextColor="#666666"/>
+            </Grid>
+        </VerticalStackLayout>
+
+        <!-- Кнопки управления -->
+        <HorizontalStackLayout Grid.Row="3" 
+                               Spacing="20"
+                               HorizontalOptions="Center"
+                               Margin="0,20">
+            
+            <!-- Назад 10 сек -->
+            <Button x:Name="BackwardButton"
+                    Text="−10"
+                    FontSize="16"
+                    WidthRequest="60"
+                    HeightRequest="60"
+                    BackgroundColor="#E0E0E0"
+                    TextColor="#333333"
+                    CornerRadius="30"
+                    Clicked="OnBackwardClicked"/>
+            
+            <!-- Play/Pause -->
+            <Border WidthRequest="80"
+                    HeightRequest="80"
+                    BackgroundColor="#007AFF"
+                    StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="40"/>
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnPlayPauseTapped"/>
+                </Border.GestureRecognizers>
+                
+                <!-- Иконка Play -->
+                <Path x:Name="PlayIcon"
+                      Data="M8,5.14V19.14L19,12.14L8,5.14Z"
+                      Fill="White"
+                      Aspect="Uniform"
+                      HeightRequest="30"
+                      WidthRequest="30"
+                      IsVisible="True"/>
+                
+                <!-- Иконка Pause -->
+                <Path x:Name="PauseIcon"
+                      Data="M6,4H10V20H6V4M14,4H18V20H14V4Z"
+                      Fill="White"
+                      Aspect="Uniform"
+                      HeightRequest="30"
+                      WidthRequest="30"
+                      IsVisible="False"/>
+            </Border>
+            
+            <!-- Вперед 10 сек -->
+            <Button x:Name="ForwardButton"
+                    Text="+10"
+                    FontSize="16"
+                    WidthRequest="60"
+                    HeightRequest="60"
+                    BackgroundColor="#E0E0E0"
+                    TextColor="#333333"
+                    CornerRadius="30"
+                    Clicked="OnForwardClicked"/>
+        </HorizontalStackLayout>
+
+        <!-- Кнопка закрыть -->
+        <Button Grid.Row="4"
+                Text="Закрыть"
+                FontSize="16"
+                BackgroundColor="#FF3B30"
+                TextColor="White"
+                CornerRadius="10"
+                HeightRequest="50"
+                VerticalOptions="End"
+                Margin="0,40,0,0"
+                Clicked="OnCloseClicked"/>
+
+    </Grid>
+
+</ContentPage>
+
