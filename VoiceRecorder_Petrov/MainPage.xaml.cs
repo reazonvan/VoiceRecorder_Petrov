@@ -82,18 +82,18 @@ namespace VoiceRecorder_Petrov
                     StopRecordingAfterTimeout = false    // Не останавливать по таймауту
                 };
 
-                // Шаг 3: Начинаем запись ПРАВИЛЬНО
+                // Шаг 3: Начинаем запись с ПРАВИЛЬНЫМ двойным await
                 // StartRecording() возвращает Task<Task<string>>
-                // Нужно получить результат через двойной await
-                Task.Run(async () =>
+                try
                 {
-                    try
-                    {
-                        var innerTask = await _recorder.StartRecording();  // Первый await
-                        _recordingFilePath = await innerTask;                // Второй await = путь к файлу
-                    }
-                    catch { }
-                });
+                    var startTask = _recorder.StartRecording();      // Запускаем
+                    var filePathTask = await startTask;              // Первый await - получаем Task<string>
+                    _recordingFilePath = await filePathTask;         // Второй await - получаем string (путь)
+                }
+                catch
+                {
+                    // Если ошибка - продолжаем без пути (будем использовать GetAudioFilePath)
+                }
 
                 // Шаг 4: Меняем состояние приложения
                 _isRecording = true;
