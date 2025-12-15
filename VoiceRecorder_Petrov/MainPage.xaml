@@ -8,19 +8,48 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
 
-            <!-- Заголовок -->
-            <Label Text="Диктофон" 
-                   FontSize="32" 
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   TextColor="#333333"/>
+            <!-- Шапка с заголовком и крестиком -->
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- Заголовок -->
+                <VerticalStackLayout Grid.Column="0" Spacing="5">
+                    <Label Text="Диктофон" 
+                           FontSize="32" 
+                           FontAttributes="Bold"
+                           HorizontalOptions="Start"
+                           TextColor="#333333"/>
+                    
+                    <!-- Статус -->
+                    <Label x:Name="StatusLabel" 
+                           Text="Готово к записи" 
+                           FontSize="18"
+                           HorizontalOptions="Start"
+                           TextColor="#666666"/>
+                </VerticalStackLayout>
 
-            <!-- Статус -->
-            <Label x:Name="StatusLabel" 
-                   Text="Готово к записи" 
-                   FontSize="18"
-                   HorizontalOptions="Center"
-                   TextColor="#666666"/>
+                <!-- Крестик для завершения записи -->
+                <Border Grid.Column="1"
+                        x:Name="FinishButton"
+                        WidthRequest="50"
+                        HeightRequest="50"
+                        BackgroundColor="#FF3B30"
+                        Stroke="Transparent"
+                        IsVisible="False"
+                        VerticalOptions="Start">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="25"/>
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnFinishButtonClicked"/>
+                    </Border.GestureRecognizers>
+                    
+                    <!-- Иконка X -->
+                    <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                          Fill="White"
+                          Aspect="Uniform"
+                          HeightRequest="24"
+                          WidthRequest="24"/>
+                </Border>
+            </Grid>
 
             <!-- Таймер записи -->
             <Border Padding="20"
@@ -42,7 +71,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Кнопка записи (Пауза/Продолжить) -->
+            <!-- Кнопка записи по центру (Начать/Пауза/Продолжить) -->
             <Button x:Name="RecordButton"
                     Text="Начать запись"
                     FontSize="18"
@@ -52,18 +81,6 @@
                     HeightRequest="60"
                     CornerRadius="30"
                     Clicked="OnRecordButtonClicked"/>
-
-            <!-- Кнопка завершения записи (видна только при записи) -->
-            <Button x:Name="FinishButton"
-                    Text="Завершить и сохранить запись"
-                    FontSize="16"
-                    FontAttributes="Bold"
-                    BackgroundColor="#FF3B30"
-                    TextColor="White"
-                    HeightRequest="55"
-                    CornerRadius="28"
-                    IsVisible="False"
-                    Clicked="OnFinishButtonClicked"/>
 
             <!-- Заголовок списка -->
             <Label Text="Мои записи" 

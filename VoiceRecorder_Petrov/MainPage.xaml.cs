@@ -256,7 +256,7 @@ namespace VoiceRecorder_Petrov
             }
         }
 
-        // Нажатие на кнопку "Завершить запись"
+        // Нажатие на крестик "Завершить запись"
         private async void OnFinishButtonClicked(object sender, EventArgs e)
         {
             // Завершаем запись и сохраняем
