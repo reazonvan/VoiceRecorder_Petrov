@@ -90,8 +90,9 @@ namespace VoiceRecorder_Petrov
                     StopRecordingAfterTimeout = false
                 };
 
-                // Начинаем запись
-                await _recorder.StartRecording();
+                // Начинаем запись (ДВОЙНОЙ await!)
+                // StartRecording возвращает Task<Task<string>>
+                string filePath = await (await _recorder.StartRecording());
 
                 // Меняем состояние
                 _isRecording = true;
@@ -175,27 +176,23 @@ namespace VoiceRecorder_Petrov
 
                 if (_recorder != null)
                 {
-                    // Останавливаем запись
-                    await _recorder.StopRecording();
-                    
-                    // Даем время на сохранение файла
-                    await Task.Delay(300);
-                    
-                    // Получаем путь к временному файлу
-                    var tempFilePath = _recorder.GetAudioFilePath();
-                    
-                    // Проверяем что файл существует
-                    if (!string.IsNullOrEmpty(tempFilePath))
+                    try
                     {
-                        // Если файл еще не создан - ждем еще немного
-                        int attempts = 0;
-                        while (!File.Exists(tempFilePath) && attempts < 10)
-                        {
-                            await Task.Delay(200);
-                            attempts++;
-                        }
+                        // Останавливаем запись и сразу получаем путь
+                        await _recorder.StopRecording();
                         
-                        if (File.Exists(tempFilePath))
+                        // Небольшая задержка для финализации файла
+                        await Task.Delay(500);
+                        
+                        // Получаем путь к файлу
+                        var tempFilePath = _recorder.GetAudioFilePath();
+                        
+                        // Проверяем минимальную длительность
+                        if (_seconds < 1)
+                        {
+                            await DisplayAlertAsync("Ошибка", "Запись слишком короткая (минимум 1 секунда)", "OK");
+                        }
+                        else if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
                         {
                             // Файл найден - сохраняем
                             await _audioService.SaveRecording(tempFilePath, _seconds);
@@ -208,13 +205,25 @@ namespace VoiceRecorder_Petrov
                         }
                         else
                         {
-                            // Файл так и не появился
-                            await DisplayAlertAsync("Ошибка", "Запись слишком короткая или файл не создан", "OK");
+                            // Файл не найден - пробуем подождать еще
+                            await Task.Delay(500);
+                            
+                            if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
+                            {
+                                // Нашли после задержки
+                                await _audioService.SaveRecording(tempFilePath, _seconds);
+                                await DisplayAlertAsync("Успех", "Запись сохранена!", "OK");
+                                LoadRecordings();
+                            }
+                            else
+                            {
+                                await DisplayAlertAsync("Ошибка", "Файл записи не создан. Попробуйте записать дольше.", "OK");
+                            }
                         }
                     }
-                    else
+                    catch (Exception recEx)
                     {
-                        await DisplayAlertAsync("Ошибка", "Не удалось получить путь к файлу", "OK");
+                        await DisplayAlertAsync("Ошибка", $"Ошибка при сохранении: {recEx.Message}", "OK");
                     }
                 }
 
