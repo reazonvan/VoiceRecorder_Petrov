@@ -12,6 +12,7 @@ namespace VoiceRecorder_Petrov
         private bool _isPlaying = false;
         private bool _isDragging = false;
         private double _currentPosition = 0;
+        private bool _isProcessing = false; // Флаг для защиты от быстрых нажатий
 
         public PlayerPage(AudioRecording recording)
         {
@@ -28,25 +29,51 @@ namespace VoiceRecorder_Petrov
         }
 
         // Воспроизведение/Пауза
-        private void OnPlayPauseTapped(object sender, EventArgs e)
+        private async void OnPlayPauseTapped(object sender, EventArgs e)
         {
-            if (_isPlaying)
+            // Защита от быстрых повторных нажатий
+            if (_isProcessing)
+                return;
+            
+            _isProcessing = true;
+            
+            try
             {
-                // Останавливаем
-                StopPlayback();
+                if (_isPlaying)
+                {
+                    // Останавливаем
+                    await StopPlayback();
+                }
+                else
+                {
+                    // Начинаем воспроизведение
+                    await StartPlayback();
+                }
             }
-            else
+            finally
             {
-                // Начинаем воспроизведение
-                StartPlayback();
+                // Небольшая задержка перед разблокировкой
+                await Task.Delay(300);
+                _isProcessing = false;
             }
         }
 
         // Начинаем воспроизведение
-        private void StartPlayback()
+        private async Task StartPlayback()
         {
             try
             {
+                // Сначала останавливаем предыдущий плеер если есть
+                if (_player != null)
+                {
+                    try
+                    {
+                        _player = null;
+                        await Task.Delay(100); // Даем время на очистку
+                    }
+                    catch { }
+                }
+                
                 // Создаем новый плеер
                 _player = new AudioPlayer();
                 
@@ -72,12 +99,12 @@ namespace VoiceRecorder_Petrov
             }
             catch (Exception ex)
             {
-                DisplayAlertAsync("Ошибка", $"Не удалось воспроизвести: {ex.Message}", "OK");
+                await DisplayAlertAsync("Ошибка", $"Не удалось воспроизвести: {ex.Message}", "OK");
             }
         }
 
         // Обновление позиции
-        private void UpdatePosition()
+        private async void UpdatePosition()
         {
             if (_currentPosition < _recording.DurationSeconds)
             {
@@ -94,7 +121,7 @@ namespace VoiceRecorder_Petrov
             else
             {
                 // Воспроизведение закончилось - останавливаем
-                StopPlayback();
+                await StopPlayback();
                 
                 // Сбрасываем позицию
                 _currentPosition = 0;
@@ -104,26 +131,32 @@ namespace VoiceRecorder_Petrov
         }
 
         // Останавливаем воспроизведение
-        private void StopPlayback()
+        private async Task StopPlayback()
         {
             try
             {
-                // Останавливаем таймер
+                // Сначала останавливаем таймер
                 _timer?.Dispose();
                 _timer = null;
                 
-                // Удаляем плеер (это останавливает воспроизведение)
-                _player = null;
-                
                 _isPlaying = false;
                 
-                // Меняем иконку на play
+                // Меняем иконку на play сразу для отзывчивости UI
                 PlayIcon.IsVisible = true;
                 PauseIcon.IsVisible = false;
+                
+                // Удаляем плеер с задержкой (это останавливает воспроизведение)
+                if (_player != null)
+                {
+                    _player = null;
+                    
+                    // Даем время системе на остановку воспроизведения
+                    await Task.Delay(100);
+                }
             }
             catch (Exception ex)
             {
-                DisplayAlertAsync("Ошибка", $"Ошибка остановки: {ex.Message}", "OK");
+                await DisplayAlertAsync("Ошибка", $"Ошибка остановки: {ex.Message}", "OK");
             }
         }
 
@@ -134,7 +167,7 @@ namespace VoiceRecorder_Petrov
         }
 
         // Конец перетаскивания ползунка
-        private void OnSliderDragCompleted(object sender, EventArgs e)
+        private async void OnSliderDragCompleted(object sender, EventArgs e)
         {
             _isDragging = false;
             
@@ -149,8 +182,8 @@ namespace VoiceRecorder_Petrov
             // Если воспроизводится - перезапускаем
             if (_isPlaying)
             {
-                StopPlayback();
-                StartPlayback();
+                await StopPlayback();
+                await StartPlayback();
             }
         }
 
@@ -160,7 +193,7 @@ namespace VoiceRecorder_Petrov
             // Останавливаем воспроизведение
             if (_isPlaying)
             {
-                StopPlayback();
+                await StopPlayback();
             }
             
             // Закрываем страницу
