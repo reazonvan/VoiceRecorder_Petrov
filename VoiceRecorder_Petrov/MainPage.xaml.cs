@@ -226,24 +226,8 @@ namespace VoiceRecorder_Petrov
                 
                 if (recording != null && File.Exists(recording.FilePath))
                 {
-                    // Останавливаем предыдущее воспроизведение (если было)
-                    _audioService.StopPlayback();
-                    
-                    // Запускаем новое воспроизведение
-                    _audioService.PlayRecording(recording.FilePath);
-                    
-                    // Показываем меню с кнопкой остановки
-                    var action = await DisplayActionSheetAsync(
-                        $"▶ Воспроизводится:\n{recording.Title}",
-                        "Закрыть",
-                        "Остановить воспроизведение",
-                        $"Длительность: {recording.FormattedDuration}");
-                    
-                    // Если выбрали "Остановить" - останавливаем
-                    if (action == "Остановить воспроизведение")
-                    {
-                        _audioService.StopPlayback();
-                    }
+                    // Открываем страницу плеера
+                    await Navigation.PushAsync(new PlayerPage(recording, _audioService));
                 }
                 else
                 {
@@ -252,7 +236,7 @@ namespace VoiceRecorder_Petrov
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync("Ошибка", $"Не удалось воспроизвести: {ex.Message}", "OK");
+                await DisplayAlertAsync("Ошибка", $"Не удалось открыть плеер: {ex.Message}", "OK");
             }
         }
 

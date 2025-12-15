@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VoiceRecorder_Petrov.PlayerPage"
+             Title="Плеер"
+             BackgroundColor="#F5F5F5">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="20">
+        
+        <!-- Шапка с крестиком -->
+        <Grid Grid.Row="0" 
+              ColumnDefinitions="*,Auto"
+              Margin="0,10,0,30">
+            
+            <VerticalStackLayout Grid.Column="0" Spacing="5">
+                <Label x:Name="TitleLabel"
+                       Text="Название записи"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="#333333"/>
+                
+                <Label x:Name="InfoLabel"
+                       Text="Дата и размер"
+                       FontSize="14"
+                       TextColor="#666666"/>
+            </VerticalStackLayout>
+
+            <!-- Крестик для закрытия -->
+            <Border Grid.Column="1"
+                    WidthRequest="45"
+                    HeightRequest="45"
+                    BackgroundColor="#FF3B30"
+                    Stroke="Transparent">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22"/>
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCloseClicked"/>
+                </Border.GestureRecognizers>
+                
+                <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                      Fill="White"
+                      Aspect="Uniform"
+                      HeightRequest="22"
+                      WidthRequest="22"/>
+            </Border>
+        </Grid>
+
+        <!-- Центр -->
+        <VerticalStackLayout Grid.Row="1"
+                             VerticalOptions="Center"
+                             Spacing="30">
+            
+            <!-- Иконка записи -->
+            <Border WidthRequest="100"
+                    HeightRequest="100"
+                    BackgroundColor="#007AFF"
+                    HorizontalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="50"/>
+                </Border.StrokeShape>
+                
+                <Path Data="M12,3V13.55C11.41,13.21 10.73,13 10,13A4,4 0 0,0 6,17A4,4 0 0,0 10,21A4,4 0 0,0 14,17V7H18V3H12Z"
+                      Fill="White"
+                      Aspect="Uniform"
+                      HeightRequest="40"
+                      WidthRequest="40"/>
+            </Border>
+
+            <!-- Таймер -->
+            <Label x:Name="TimerLabel"
+                   Text="00:00"
+                   FontSize="36"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="#333333"/>
+
+            <Label x:Name="DurationLabel"
+                   Text="из 00:00"
+                   FontSize="16"
+                   HorizontalOptions="Center"
+                   TextColor="#666666"/>
+
+        </VerticalStackLayout>
+
+        <!-- Кнопка Play/Pause по центру -->
+        <Button x:Name="PlayPauseButton"
+                Grid.Row="2"
+                Text="Воспроизвести"
+                FontSize="18"
+                FontAttributes="Bold"
+                BackgroundColor="#007AFF"
+                TextColor="White"
+                HeightRequest="65"
+                CornerRadius="32"
+                Margin="0,0,0,30"
+                Clicked="OnPlayPauseClicked"/>
+
+    </Grid>
+
+</ContentPage>
+
