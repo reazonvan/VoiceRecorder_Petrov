@@ -170,8 +170,13 @@ namespace VoiceRecorder_Petrov
                 
                 if (recording != null && File.Exists(recording.FilePath))
                 {
-                    // Открываем страницу плеера
-                    await Navigation.PushAsync(new PlayerPage(recording, _audioService));
+                    // Просто воспроизводим запись
+                    _audioService.PlayRecording(recording.FilePath);
+                    
+                    // Показываем сообщение
+                    await DisplayAlertAsync("Воспроизведение", 
+                        $"Воспроизводится: {recording.Title}\n\nДлительность: {recording.FormattedDuration}", 
+                        "OK");
                 }
                 else
                 {
@@ -180,7 +185,7 @@ namespace VoiceRecorder_Petrov
             }
             catch (Exception ex)
             {
-                await DisplayAlertAsync("Ошибка", $"Не удалось открыть плеер: {ex.Message}", "OK");
+                await DisplayAlertAsync("Ошибка", $"Не удалось воспроизвести: {ex.Message}", "OK");
             }
         }
 

@@ -1,3 +1,4 @@
+using Plugin.AudioRecorder;
 using System.Text.Json;
 using VoiceRecorder_Petrov.Models;
 
@@ -11,6 +12,9 @@ namespace VoiceRecorder_Petrov.Services
         
         // Файл с информацией о записях (JSON)
         private readonly string _dataFile;
+        
+        // Простой плеер для воспроизведения
+        private readonly AudioPlayer _player;
 
         public AudioService()
         {
@@ -25,6 +29,9 @@ namespace VoiceRecorder_Petrov.Services
             {
                 Directory.CreateDirectory(_recordingsFolder);
             }
+            
+            // Создаем плеер (из Plugin.AudioRecorder - простой и стабильный)
+            _player = new AudioPlayer();
         }
 
         // Сохраняем новую запись
@@ -91,6 +98,27 @@ namespace VoiceRecorder_Petrov.Services
             catch (Exception)
             {
                 return new List<AudioRecording>();
+            }
+        }
+
+        // Воспроизводим запись (просто запускаем и всё)
+        public void PlayRecording(string filePath)
+        {
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    // Простое воспроизведение через AudioPlayer
+                    _player.Play(filePath);
+                }
+                else
+                {
+                    throw new Exception("Файл не найден");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка воспроизведения: {ex.Message}");
             }
         }
 
