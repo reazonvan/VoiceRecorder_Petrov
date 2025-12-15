@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VoiceRecorder_Petrov.MainPage"
+             Title="Диктофон"
+             BackgroundColor="#F5F5F5">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+
+            <!-- Заголовок -->
+            <Label Text="Диктофон" 
+                   FontSize="32" 
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="#333333"/>
+
+            <!-- Статус -->
+            <Label x:Name="StatusLabel" 
+                   Text="Готово к записи" 
+                   FontSize="18"
+                   HorizontalOptions="Center"
+                   TextColor="#666666"/>
+
+            <!-- Таймер записи -->
+            <Border Padding="20"
+                    Margin="0,20"
+                    BackgroundColor="White"
+                    Stroke="#DDDDDD"
+                    StrokeThickness="1">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="15"/>
+                </Border.StrokeShape>
+                
+                <VerticalStackLayout Spacing="10">
+                    <Label x:Name="TimerLabel" 
+                           Text="00:00" 
+                           FontSize="48"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"
+                           TextColor="#007AFF"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Кнопка записи -->
+            <Button x:Name="RecordButton"
+                    Text="Начать запись"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    BackgroundColor="#007AFF"
+                    TextColor="White"
+                    HeightRequest="60"
+                    CornerRadius="30"
+                    Clicked="OnRecordButtonClicked"/>
+
+            <!-- Заголовок списка -->
+            <Label Text="Мои записи" 
+                   FontSize="24" 
+                   FontAttributes="Bold"
+                   Margin="0,20,0,10"
+                   TextColor="#333333"/>
+
+            <!-- Список записей -->
+            <CollectionView x:Name="RecordingsCollection"
+                            SelectionMode="None"
+                            EmptyView="Нет записей. Создайте первую запись.">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="15"
+                                Margin="0,5"
+                                BackgroundColor="White"
+                                Stroke="#DDDDDD"
+                                StrokeThickness="1">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="10"/>
+                            </Border.StrokeShape>
+                            
+                            <Grid ColumnDefinitions="*,Auto,Auto" 
+                                  ColumnSpacing="10">
+                                
+                                <!-- Информация о записи -->
+                                <VerticalStackLayout Grid.Column="0" 
+                                                     Spacing="5">
+                                    <Label Text="{Binding Title}" 
+                                           FontSize="16"
+                                           FontAttributes="Bold"
+                                           TextColor="#333333"/>
+                                    <Label FontSize="14"
+                                           TextColor="#666666">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="{Binding FormattedDate}"/>
+                                                <Span Text=" • "/>
+                                                <Span Text="{Binding FormattedDuration}"/>
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                    <Label Text="{Binding FormattedFileSize}" 
+                                           FontSize="12"
+                                           TextColor="#999999"/>
+                                </VerticalStackLayout>
+
+                                <!-- Кнопка воспроизведения -->
+                                <Button Grid.Column="1"
+                                        Text="▶"
+                                        FontSize="20"
+                                        WidthRequest="50"
+                                        HeightRequest="50"
+                                        BackgroundColor="#007AFF"
+                                        TextColor="White"
+                                        CornerRadius="25"
+                                        Clicked="OnPlayButtonClicked"
+                                        CommandParameter="{Binding .}"/>
+
+                                <!-- Кнопка удаления -->
+                                <Button Grid.Column="2"
+                                        Text="🗑"
+                                        FontSize="20"
+                                        WidthRequest="50"
+                                        HeightRequest="50"
+                                        BackgroundColor="#FF3B30"
+                                        TextColor="White"
+                                        CornerRadius="25"
+                                        Clicked="OnDeleteButtonClicked"
+                                        CommandParameter="{Binding .}"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
