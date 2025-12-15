@@ -5,14 +5,12 @@
              Title="Воспроизведение"
              BackgroundColor="#F5F5F5">
 
-    <Grid RowDefinitions="*,Auto,Auto,*" Padding="20">
+    <Grid RowDefinitions="*,Auto,Auto,Auto,*" Padding="20">
 
         <!-- Название записи -->
         <VerticalStackLayout Grid.Row="1" 
-                             Spacing="15"
-                             HorizontalOptions="Center"
-                             VerticalOptions="Center">
-            
+                             Spacing="10"
+                             HorizontalOptions="Center">
             <Label x:Name="TitleLabel" 
                    Text="Запись" 
                    FontSize="24"
@@ -25,35 +23,54 @@
                    FontSize="14"
                    HorizontalOptions="Center"
                    TextColor="#666666"/>
+        </VerticalStackLayout>
+
+        <!-- Прогресс бар -->
+        <VerticalStackLayout Grid.Row="2" 
+                             Spacing="10"
+                             Margin="0,30,0,20">
             
-            <Label x:Name="DurationLabel" 
-                   Text="00:00" 
-                   FontSize="48"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   TextColor="#007AFF"
-                   Margin="0,20,0,0"/>
+            <!-- Слайдер для перемотки -->
+            <Slider x:Name="PositionSlider"
+                    Minimum="0"
+                    Maximum="100"
+                    Value="0"
+                    MinimumTrackColor="#007AFF"
+                    MaximumTrackColor="#DDDDDD"
+                    ThumbColor="#007AFF"
+                    DragStarted="OnSliderDragStarted"
+                    DragCompleted="OnSliderDragCompleted"/>
             
-            <Label x:Name="StatusLabel" 
-                   Text="Готово к воспроизведению" 
-                   FontSize="16"
-                   HorizontalOptions="Center"
-                   TextColor="#999999"/>
+            <!-- Время -->
+            <Grid ColumnDefinitions="*,*">
+                <Label x:Name="CurrentTimeLabel" 
+                       Text="00:00" 
+                       FontSize="14"
+                       HorizontalOptions="Start"
+                       TextColor="#666666"/>
+                
+                <Label x:Name="TotalTimeLabel" 
+                       Text="00:00" 
+                       FontSize="14"
+                       Grid.Column="1"
+                       HorizontalOptions="End"
+                       TextColor="#666666"/>
+            </Grid>
         </VerticalStackLayout>
 
         <!-- Кнопки управления -->
-        <HorizontalStackLayout Grid.Row="2" 
+        <HorizontalStackLayout Grid.Row="3" 
                                Spacing="20"
                                HorizontalOptions="Center"
-                               Margin="0,40">
+                               Margin="0,20">
             
             <!-- Play/Pause -->
-            <Border WidthRequest="100"
-                    HeightRequest="100"
+            <Border WidthRequest="80"
+                    HeightRequest="80"
                     BackgroundColor="#007AFF"
                     StrokeThickness="0">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="50"/>
+                    <RoundRectangle CornerRadius="40"/>
                 </Border.StrokeShape>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnPlayPauseTapped"/>
@@ -63,17 +80,17 @@
                     <!-- Иконка Play -->
                     <Label x:Name="PlayIcon"
                            Text="▶"
-                           FontSize="40"
+                           FontSize="36"
                            TextColor="White"
                            IsVisible="True"
                            HorizontalOptions="Center"
                            VerticalOptions="Center"
-                           Margin="5,0,0,0"/>
+                           Margin="3,0,0,0"/>
                     
                     <!-- Иконка Pause -->
                     <Label x:Name="PauseIcon"
-                           Text="❚❚"
-                           FontSize="32"
+                           Text="⏸"
+                           FontSize="36"
                            TextColor="White"
                            IsVisible="False"
                            HorizontalOptions="Center"
@@ -83,7 +100,7 @@
         </HorizontalStackLayout>
 
         <!-- Кнопка закрыть -->
-        <Button Grid.Row="3"
+        <Button Grid.Row="4"
                 Text="Закрыть"
                 FontSize="16"
                 BackgroundColor="#FF3B30"
@@ -91,7 +108,7 @@
                 CornerRadius="10"
                 HeightRequest="50"
                 VerticalOptions="End"
-                Margin="0,0,0,20"
+                Margin="0,40,0,0"
                 Clicked="OnCloseClicked"/>
 
     </Grid>
