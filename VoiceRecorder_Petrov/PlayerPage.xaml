@@ -78,23 +78,26 @@
                 
                 <Grid>
                     <!-- Иконка Play -->
-                    <Label x:Name="PlayIcon"
-                           Text="▶"
-                           FontSize="36"
-                           TextColor="White"
-                           IsVisible="True"
-                           HorizontalOptions="Center"
-                           VerticalOptions="Center"
-                           Margin="3,0,0,0"/>
+                    <Path x:Name="PlayIcon"
+                          Data="M8,5.14V19.14L19,12.14L8,5.14Z"
+                          Fill="White"
+                          Aspect="Uniform"
+                          HeightRequest="32"
+                          WidthRequest="32"
+                          IsVisible="True"
+                          HorizontalOptions="Center"
+                          VerticalOptions="Center"/>
                     
                     <!-- Иконка Pause -->
-                    <Label x:Name="PauseIcon"
-                           Text="⏸"
-                           FontSize="36"
-                           TextColor="White"
-                           IsVisible="False"
-                           HorizontalOptions="Center"
-                           VerticalOptions="Center"/>
+                    <Path x:Name="PauseIcon"
+                          Data="M6,4H10V20H6V4M14,4H18V20H14V4Z"
+                          Fill="White"
+                          Aspect="Uniform"
+                          HeightRequest="32"
+                          WidthRequest="32"
+                          IsVisible="False"
+                          HorizontalOptions="Center"
+                          VerticalOptions="Center"/>
                 </Grid>
             </Border>
         </HorizontalStackLayout>

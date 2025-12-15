@@ -7,7 +7,7 @@ namespace VoiceRecorder_Petrov
     public partial class PlayerPage : ContentPage
     {
         private readonly AudioRecording _recording;
-        private readonly AudioPlayer _player;
+        private AudioPlayer? _player;
         private System.Threading.Timer? _timer;
         private bool _isPlaying = false;
         private bool _isDragging = false;
@@ -18,7 +18,6 @@ namespace VoiceRecorder_Petrov
             InitializeComponent();
             
             _recording = recording;
-            _player = new AudioPlayer();
             
             // Устанавливаем информацию о записи
             TitleLabel.Text = _recording.Title;
@@ -48,6 +47,9 @@ namespace VoiceRecorder_Petrov
         {
             try
             {
+                // Создаем новый плеер
+                _player = new AudioPlayer();
+                
                 // Воспроизводим файл
                 _player.Play(_recording.FilePath);
                 _isPlaying = true;
@@ -110,6 +112,9 @@ namespace VoiceRecorder_Petrov
                 _timer?.Dispose();
                 _timer = null;
                 
+                // Удаляем плеер (это останавливает воспроизведение)
+                _player = null;
+                
                 _isPlaying = false;
                 
                 // Меняем иконку на play
@@ -169,6 +174,8 @@ namespace VoiceRecorder_Petrov
             
             _timer?.Dispose();
             _timer = null;
+            
+            _player = null;
         }
     }
 }
