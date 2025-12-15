@@ -13,8 +13,8 @@ namespace VoiceRecorder_Petrov.Services
         // Файл с информацией о записях (JSON)
         private readonly string _dataFile;
         
-        // Простой плеер для воспроизведения
-        private readonly AudioPlayer _player;
+        // Плеер для воспроизведения (можем пересоздавать)
+        private AudioPlayer? _player;
 
         public AudioService()
         {
@@ -29,9 +29,6 @@ namespace VoiceRecorder_Petrov.Services
             {
                 Directory.CreateDirectory(_recordingsFolder);
             }
-            
-            // Создаем плеер (из Plugin.AudioRecorder - простой и стабильный)
-            _player = new AudioPlayer();
         }
 
         // Сохраняем новую запись
@@ -108,7 +105,10 @@ namespace VoiceRecorder_Petrov.Services
             {
                 if (File.Exists(filePath))
                 {
-                    // Простое воспроизведение через AudioPlayer
+                    // Создаем новый плеер (это останавливает предыдущий)
+                    _player = new AudioPlayer();
+                    
+                    // Запускаем воспроизведение
                     _player.Play(filePath);
                 }
                 else
@@ -127,12 +127,13 @@ namespace VoiceRecorder_Petrov.Services
         {
             try
             {
-                // AudioPlayer автоматически останавливается при вызове нового Play
-                // Этот метод нужен для явной остановки перед новым воспроизведением
+                // Создаем новый плеер - это останавливает текущее воспроизведение
+                // Старый плеер автоматически останавливается когда создается новый
+                _player = new AudioPlayer();
             }
             catch
             {
-                // Игнорируем ошибки остановки
+                // Игнорируем ошибки
             }
         }
 
