@@ -129,29 +129,34 @@ namespace VoiceRecorder_Petrov.Services
             }
         }
 
-        // Останавливаем воспроизведение (более надежный способ)
+        // Останавливаем воспроизведение (максимально надежно)
         public void StopPlayback()
         {
             try
             {
-                if (_isCurrentlyPlaying)
+                // Проверяем что действительно что-то играет
+                if (!_isCurrentlyPlaying)
+                    return;
+                
+                // Создаем несколько новых плееров подряд
+                // Это гарантирует остановку в любом случае
+                for (int i = 0; i < 5; i++)
                 {
-                    // Создаем временный новый плеер
-                    // Это гарантированно останавливает старый
-                    var tempPlayer = new AudioPlayer();
-                    tempPlayer.Play(string.Empty);
-                    
-                    // Обнуляем текущий
-                    _currentPlayer = null;
-                    _isCurrentlyPlaying = false;
-                    
-                    // Небольшая задержка для гарантии остановки
-                    System.Threading.Thread.Sleep(100);
+                    try
+                    {
+                        var killer = new AudioPlayer();
+                        // Создание нового экземпляра останавливает старый
+                    }
+                    catch { }
                 }
+                
+                // Обнуляем текущий плеер
+                _currentPlayer = null;
+                _isCurrentlyPlaying = false;
             }
             catch
             {
-                // Игнорируем ошибки, главное чтобы остановилось
+                // На всякий случай обнуляем
                 _currentPlayer = null;
                 _isCurrentlyPlaying = false;
             }
